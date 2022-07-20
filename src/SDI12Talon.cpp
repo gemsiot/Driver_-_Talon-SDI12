@@ -599,34 +599,34 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		}
 		output = output + "],"; // close array
 
-		disableDataAll(); //Make sure all data ports are turned off to begin with
-		for(int port = 1; port <= numPorts; port++) { //CHECK EACH SENSOR PORT FOR ADDRESSES
-			output = output + "\"I2C_" + String(port) + "\":["; //Append identifer for
-			Serial.print("Enable States: "); //DEBUG! And following prints
-			Serial.print(enablePower(port, true)); //Turn on power to given port //DEBUG! REPLACE!
-			Serial.println(enableData(port, true)); //Turn on data to given port
-			// delay(10);
-			// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect to external I2C
-			for(int adr = 0; adr < 128; adr++) { //Check for addresses present 
-				Wire.beginTransmission(adr);
-				// Wire.write(0x00);
-				int error = Wire.endTransmission();
-				if(adr == 0) { //DEBUG!
-					Serial.print("Zero Error: ");
-					Serial.println(error); 
-				}
-				if(error == 0) {
-					output = output + String(adr) + ",";
-				}
-				delay(1); //DEBUG!
-			}
-			enableData(port, false); //Turn off data to given port
-			if(output.substring(output.length() - 1).equals(",")) {
-				output = output.substring(0, output.length() - 1); //Trim trailing ',' if present
-			}
-			output = output + "]"; //Close array
-			if(port < numPorts) output = output + ","; //Only add comma if not the last entry in array 
-		}
+		// disableDataAll(); //Make sure all data ports are turned off to begin with
+		// for(int port = 1; port <= numPorts; port++) { //CHECK EACH SENSOR PORT FOR ADDRESSES
+		// 	output = output + "\"I2C_" + String(port) + "\":["; //Append identifer for
+		// 	Serial.print("Enable States: "); //DEBUG! And following prints
+		// 	Serial.print(enablePower(port, true)); //Turn on power to given port //DEBUG! REPLACE!
+		// 	Serial.println(enableData(port, true)); //Turn on data to given port
+		// 	// delay(10);
+		// 	// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect to external I2C
+		// 	for(int adr = 0; adr < 128; adr++) { //Check for addresses present 
+		// 		Wire.beginTransmission(adr);
+		// 		// Wire.write(0x00);
+		// 		int error = Wire.endTransmission();
+		// 		if(adr == 0) { //DEBUG!
+		// 			Serial.print("Zero Error: ");
+		// 			Serial.println(error); 
+		// 		}
+		// 		if(error == 0) {
+		// 			output = output + String(adr) + ",";
+		// 		}
+		// 		delay(1); //DEBUG!
+		// 	}
+		// 	enableData(port, false); //Turn off data to given port
+		// 	if(output.substring(output.length() - 1).equals(",")) {
+		// 		output = output.substring(0, output.length() - 1); //Trim trailing ',' if present
+		// 	}
+		// 	output = output + "]"; //Close array
+		// 	if(port < numPorts) output = output + ","; //Only add comma if not the last entry in array 
+		// }
 		output = output + "}"; //Close pair
 		
 		
@@ -644,25 +644,77 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 	// return "{}"; //DEBUG!
 }
 
+bool SDI12Talon::hasReset()
+{
+	// int error = 0; //Used to store the error from I2C read
+	// uint16_t outputState = ioAlpha.readWord(0x06, error); //Read from configuration register 
+	// if(((outputState >> pinsAlpha::MUX_EN) & 0x01) == 0x00) return false; //If output is still 
+	Wire.beginTransmission(0x41); //Write to sense IO expander 
+	Wire.write(0x03); //Read from configuration reg
+	int error = Wire.endTransmission();
+	Wire.requestFrom(0x41, 1); //Read single byte back
+	uint8_t state = Wire.read();
+
+	if(((state >> pinsSense::MUX_EN) & 0x01) == 0 && error == 0) return false; //If MUX_EN is set as an output AND there is no I2C error, device has not reset  
+	else return true; //If the MUX_EN pin is no longer configured as an output, assume the Talon has reset
+}
+
 int SDI12Talon::restart()
 {
-	// bool hasCriticalError = false;
-	// bool hasError = false;
-	// if(initDone == false) begin(0, hasCriticalError, hasError); //If for some reason the begin() function has not been run, call this now //FIX!
+bool hasCriticalError = false;
+	bool hasError = false;
+	if(hasReset()) begin(0, hasCriticalError, hasError); //If Talon has been power cycled, run begin function again
 	// setPinDefaults(); //Reset IO expander pins to their default state
-	// for(int i = 0; i < 3; i++) {
-	// 	if (faults[i] == true) { 
-	// 		if(ioAlpha.digitalRead(pinsAlpha::FAULT1 + i) == LOW) { //If the FAULT is still asserted 
-	// 			ioAlpha.digitalWrite(pinsAlpha::EN1 + i, HIGH); //Turn port power ON
-	// 			ioAlpha.digitalWrite(pinsAlpha::EN1 + i, LOW); //Turn port off
-	// 			ioAlpha.digitalWrite(pinsAlpha::EN1 + i, HIGH); //Turn port back on finally
-	// 			delay(10); //Wait for trip
-	// 			if(ioAlpha.digitalRead(pinsAlpha::FAULT1 + i) == LOW) { //If FAULT is re-asserted after power cycle
-	// 				throwError(POWER_FAULT_PERSISTENT | i); //Throw persistent power fault error with given port appended 
-	// 			}
-	// 		}
-	// 	}
-	// }
+	bool hasFault = false;
+	for(int i = 0; i < numPorts; i++) {
+		if(ioAlpha.getInterrupt(pinsAlpha::FAULT1 + i)) {
+			throwError(SENSOR_POWER_FAIL | talonPortErrorCode | i); //Throw error because a power failure has occured  
+			hasFault = true; //Set flag if any return true
+		}
+	}
+	if(hasFault) { //If there are power faults, reset the system
+		ioAlpha.digitalWrite(pinsAlpha::SENSE_EN, LOW); //Turn off sensing
+		disablePowerAll(); //Turn off all power  
+		disableDataAll(); //Turn off all data
+		for(int i = pinsAlpha::FAULT1; i <= pinsAlpha::FAULT4; i++) { //Set fault lines as outputs
+			ioAlpha.pinMode(i, OUTPUT); 
+			ioAlpha.digitalWrite(i, LOW);
+		}
+
+		for(int i = 1; i <= numPorts; i++) { //Enable power
+			faults[i - 1] = false; //Reset fault state
+			enablePower(i, true); //Turn on power for each port
+			if(testOvercurrent()) { //Check if excess current 
+				enablePower(i, false); //Turn port back off
+				faults[i - 1] = true; //Store which ports have faulted 
+				Serial.print("Port Fault: "); //DEBUG!
+				Serial.println(i);
+			}
+		}
+		ioAlpha.digitalWrite(pinsAlpha::SENSE_EN, HIGH); //Turn sensing back on
+
+		for(int i = 1; i <= numPorts; i++) { //Toggle power to all ports to reset faults
+			if(!faults[i - 1]) { //Only toggle back on if no fault
+				enablePower(i, true);
+				delayMicroseconds(10);
+				enablePower(i, false);
+				delayMicroseconds(10);
+				enablePower(i, true);
+			}
+		}
+
+		for(int i = pinsAlpha::FAULT1; i <= pinsAlpha::FAULT4; i++) { //Release fault lines
+			ioAlpha.pinMode(i, INPUT_PULLUP); 
+			// ioAlpha.digitalWrite(i, LOW);
+		}
+		ioAlpha.clearInterrupt(PCAL9535A::IntAge::BOTH); //Clear all interrupts on Alpha
+		for(int i = 0; i < numPorts; i++) {
+			if(ioAlpha.digitalRead(pinsAlpha::FAULT1 + i)) {
+				throwError(SENSOR_POWER_FAIL_PERSISTENT | talonPortErrorCode | i); //Throw error because a power failure still present
+				hasFault = true; //Set flag if any return true
+			}
+		}
+	}
 	return 0; //FIX!
 }
 
@@ -861,14 +913,14 @@ void SDI12Talon::setPinDefaults()
 	
 }
 
-bool SDI12Talon::hasReset()
-{
-	// int error = 0; //Used to store the error from I2C read
-	// uint16_t outputState = ioAlpha.readWord(0x06, error); //Read from configuration register 
-	// if(((outputState >> pinsAlpha::MUX_EN) & 0x01) == 0x00) return false; //If output is still 
-	// else return true; //If the MUX_EN pin is no longer configured as an output, assume the Talon has reset
-	return false; //DEBUG!
-}
+// bool SDI12Talon::hasReset()
+// {
+// 	// int error = 0; //Used to store the error from I2C read
+// 	// uint16_t outputState = ioAlpha.readWord(0x06, error); //Read from configuration register 
+// 	// if(((outputState >> pinsAlpha::MUX_EN) & 0x01) == 0x00) return false; //If output is still 
+// 	// else return true; //If the MUX_EN pin is no longer configured as an output, assume the Talon has reset
+// 	return false; //DEBUG!
+// }
 
 String SDI12Talon::getMetadata()
 {
@@ -892,7 +944,7 @@ String SDI12Talon::getMetadata()
 		}
 	}
 
-	String metadata = "{\"Talon-I2C\":{";
+	String metadata = "{\"Talon-SDI12\":{";
 	if(error == 0) metadata = metadata + "\"SN\":\"" + uuid + "\","; //Append UUID only if read correctly, skip otherwise 
 	metadata = metadata + "\"Hardware\":\"v" + String(version >> 4, HEX) + "." + String(version & 0x0F, HEX) + "\","; //Report version as modded BCD
 	metadata = metadata + "\"Firmware\":\"v" + FIRMWARE_VERSION + "\","; //Report firmware version as modded BCD
