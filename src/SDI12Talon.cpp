@@ -498,7 +498,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		}
 		else { //If unable to initialzie ADC
 			output = output + "\"PORT_V\":[null],\"PORT_I\":[null]";
-			throwError(ADC_INIT_FAIL | talonPortErrorCode); //Throw error for ADC failure
+			throwError(SENSE_ADC_INIT_FAIL | talonPortErrorCode); //Throw error for ADC failure
 		}
 		ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Turn MUX back off 
 		// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Return to default external connecton
@@ -597,7 +597,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		if(output.substring(output.length() - 1).equals(",")) {
 			output = output.substring(0, output.length() - 1); //Trim trailing ',' is present
 		}
-		output = output + "],"; // close array
+		output = output + "]"; // close array
 
 		// disableDataAll(); //Make sure all data ports are turned off to begin with
 		// for(int port = 1; port <= numPorts; port++) { //CHECK EACH SENSOR PORT FOR ADDRESSES
