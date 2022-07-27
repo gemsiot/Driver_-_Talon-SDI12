@@ -455,7 +455,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		for(int p = 1; p <= numPorts; p++) {
 			enablePower(p, true); //Turn on power to all ports before measuring //DEBUG!
 		}
-		digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
+		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
 		for(int i = pinsSense::MUX_SEL0; i <= pinsSense::MUX_EN; i++) { //Set all pins to output
 			ioSense.pinMode(i, OUTPUT); 
 		}
@@ -561,9 +561,9 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 
 	if(diagnosticLevel <= 5) {
 		output = output + "\"lvl-5\":{"; //OPEN JSON BLOB
-		digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
+		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
 		disableDataAll(); //Turn off all data 
-		digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
+		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
 		for(int i = 0; i < numPorts; i++) {
 			// overflow[i] = ioBeta.getInterrupt(pinsBeta::OVF1 + i); //Read in overflow values
 			faults[i] = ioAlpha.getInterrupt(pinsAlpha::FAULT1 + i); //Read in fault values
@@ -597,7 +597,19 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		if(output.substring(output.length() - 1).equals(",")) {
 			output = output.substring(0, output.length() - 1); //Trim trailing ',' is present
 		}
-		output = output + "]"; // close array
+		output = output + "],"; // close array
+
+		output = output + "\"ADRs\":["; //Grab address from each port
+		for(int i = 1; i <= numPorts; i++) {
+			enableData(i, true); //Turn on data port
+			String adr = sendCommand("?!");
+			int adrVal = adr.toInt();
+			if(adr.equals("") || (adr.equals("0") && adrVal != 0)) output = output + "null"; //If no return, report null
+			else output = output + adr; //Otherwise report the read value
+			if(i < numPorts) output = output + ","; //Add comma if not last entry
+			enableData(i, false); //Turn data port back off
+		}
+		output = output + "]"; //Close array
 
 		// disableDataAll(); //Make sure all data ports are turned off to begin with
 		// for(int port = 1; port <= numPorts; port++) { //CHECK EACH SENSOR PORT FOR ADDRESSES
@@ -661,7 +673,7 @@ bool SDI12Talon::hasReset()
 
 int SDI12Talon::restart()
 {
-bool hasCriticalError = false;
+	bool hasCriticalError = false;
 	bool hasError = false;
 	if(hasReset()) begin(0, hasCriticalError, hasError); //If Talon has been power cycled, run begin function again
 	// setPinDefaults(); //Reset IO expander pins to their default state
