@@ -604,7 +604,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 			enableData(i, true); //Turn on data port
 			String adr = sendCommand("?!");
 			int adrVal = adr.toInt();
-			if(adr.equals("") || (adr.equals("0") && adrVal != 0)) output = output + "null"; //If no return, report null
+			if(adr.equals("") || (!adr.equals("0") && adrVal == 0)) output = output + "null"; //If no return, report null
 			else output = output + adr; //Otherwise report the read value
 			if(i < numPorts) output = output + ","; //Add comma if not last entry
 			enableData(i, false); //Turn data port back off
