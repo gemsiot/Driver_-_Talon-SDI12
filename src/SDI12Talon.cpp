@@ -79,7 +79,7 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 	for(int i = 1; i <= numPorts; i++) { //Enable power
 		faults[i - 1] = false; //Reset fault state
 		enablePower(i, true); //Turn on power for each port
-		delayMicroseconds(1500);
+		delayMicroseconds(2000);
 		if(testOvercurrent()) { //Check if excess current 
 			enablePower(i, false); //Turn port back off
 			faults[i - 1] = true; //Store which ports have faulted 
@@ -274,7 +274,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		for(int i = 0; i <= numPorts; i++) { //Iterate over each port
 			int totalErrors = 0; //Track how many of the test calls fail
 			if(i > 0) {
-				enablePower(i, true); //Turn on power to a given power after testing the base bus
+				// enablePower(i, true); //Turn on power to a given power after testing the base bus
 				enableData(i, true); //Turn on data to a given port after testing the base bus
 			}
 			// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect to external I2C (w/loopback enabled, so it is a combined bus now)
@@ -453,9 +453,9 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 
 		// ioSense.begin(); //Initalize voltage sensor IO expander
 		///////////// SENSE VOLTAGE AND CURRENT FOR PORTS ///////////
-		for(int p = 1; p <= numPorts; p++) {
-			enablePower(p, true); //Turn on power to all ports before measuring //DEBUG!
-		}
+		// for(int p = 1; p <= numPorts; p++) {
+		// 	enablePower(p, true); //Turn on power to all ports before measuring //DEBUG!
+		// }
 		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
 		for(int i = pinsSense::MUX_SEL0; i <= pinsSense::MUX_EN; i++) { //Set all pins to output
 			ioSense.pinMode(i, OUTPUT); 
@@ -680,15 +680,15 @@ int SDI12Talon::restart()
 	// setPinDefaults(); //Reset IO expander pins to their default state
 	bool hasFault = false;
 	for(int i = 0; i < numPorts; i++) {
-		if(ioAlpha.getInterrupt(pinsAlpha::FAULT1 + i)) {
+		if(ioAlpha.getInterrupt(pinsAlpha::FAULT1 + i) || ioAlpha.digitalRead(pinsAlpha::FAULT1 + i)) { //If previous fault, or current fault
 			throwError(SENSOR_POWER_FAIL | talonPortErrorCode | i); //Throw error because a power failure has occured  
 			hasFault = true; //Set flag if any return true
 		}
 	}
 	if(hasFault) { //If there are power faults, reset the system
 		ioAlpha.digitalWrite(pinsAlpha::SENSE_EN, LOW); //Turn off sensing
-		disablePowerAll(); //Turn off all power  
-		disableDataAll(); //Turn off all data
+		// disablePowerAll(); //Turn off all power  
+		// disableDataAll(); //Turn off all data
 		for(int i = pinsAlpha::FAULT1; i <= pinsAlpha::FAULT4; i++) { //Set fault lines as outputs
 			ioAlpha.pinMode(i, OUTPUT); 
 			ioAlpha.digitalWrite(i, LOW);
@@ -697,6 +697,7 @@ int SDI12Talon::restart()
 		for(int i = 1; i <= numPorts; i++) { //Enable power
 			faults[i - 1] = false; //Reset fault state
 			enablePower(i, true); //Turn on power for each port
+			delayMicroseconds(2000);
 			if(testOvercurrent()) { //Check if excess current 
 				enablePower(i, false); //Turn port back off
 				faults[i - 1] = true; //Store which ports have faulted 
@@ -704,20 +705,26 @@ int SDI12Talon::restart()
 				Serial.println(i);
 			}
 		}
+		delay(500); //Delay to wait for high power draw of O2 sensor to be over 
 		ioAlpha.digitalWrite(pinsAlpha::SENSE_EN, HIGH); //Turn sensing back on
 
 		for(int i = 1; i <= numPorts; i++) { //Toggle power to all ports to reset faults
 			if(!faults[i - 1]) { //Only toggle back on if no fault
-				enablePower(i, true);
+				// enablePower(i, true);
+				// delayMicroseconds(10);
+				// enablePower(i, false);
+				// delayMicroseconds(10);
+				// enablePower(i, true);
+				ioAlpha.digitalWrite(i - 1, HIGH);
 				delayMicroseconds(10);
-				enablePower(i, false);
+				ioAlpha.digitalWrite(i - 1, LOW);
 				delayMicroseconds(10);
-				enablePower(i, true);
+				ioAlpha.digitalWrite(i - 1, HIGH);
 			}
 		}
 
 		for(int i = pinsAlpha::FAULT1; i <= pinsAlpha::FAULT4; i++) { //Release fault lines
-			ioAlpha.pinMode(i, INPUT_PULLUP); 
+			ioAlpha.pinMode(i, INPUT); 
 			// ioAlpha.digitalWrite(i, LOW);
 		}
 		ioAlpha.clearInterrupt(PCAL9535A::IntAge::BOTH); //Clear all interrupts on Alpha
@@ -1114,7 +1121,9 @@ String SDI12Talon::sendCommand(String Command)
 	Serial1.print(serialConvert8N1to7E1(Command)); //Send converted value
 	Serial1.flush(); //Make sure data is transmitted before releasing the bus
 	delay(2); //DEBUG! Return to 1ms??
+	while(Serial1.available() > 0) Serial1.read(); //DEBUG! Clear buffer 
 	releaseBus(); //Switch bus to recieve 
+	
 
 	unsigned long LocalTime = millis();
 	char Data[100] = {0}; //Make data array for storage FIX! Change length to not be arbitrary
@@ -1181,7 +1190,7 @@ bool SDI12Talon::testOvercurrent()
 	Wire.write(0x1F); //Write refresh command
 	Wire.write(0x00); //Initilize a clear
 	uint8_t error = Wire.endTransmission();
-	// delay(1);
+	delay(1);
 	
 
 	Wire.beginTransmission(ADR);
