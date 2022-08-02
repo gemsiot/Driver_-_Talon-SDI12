@@ -85,6 +85,7 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 			faults[i - 1] = true; //Store which ports have faulted 
 			Serial.print("Port Fault: "); //DEBUG!
 			Serial.println(i);
+			//THROW ERROR!
 		}
 	}
 	delay(500); //Delay to wait for high power draw of O2 sensor to be over 
@@ -200,7 +201,7 @@ String SDI12Talon::getErrors()
 	// 	}
 	// 	return 0; //Return success indication
 	// }
-	String output = "{\"Talon-I2C\":{"; // OPEN JSON BLOB
+	String output = "{\"Talon-SDI12\":{"; // OPEN JSON BLOB
 	output = output + "\"CODES\":["; //Open codes pair
 
 	for(int i = 0; i < min(MAX_NUM_ERRORS, numErrors); i++) { //Interate over used element of array without exceeding bounds
@@ -733,7 +734,7 @@ int SDI12Talon::restart()
 String SDI12Talon::getData(time_t time)
 {
 	// String output = "{\"I2C_TALON\":"; //OPEN JSON BLOB
-	String output = "{\"I2C_TALON\":null}"; //DUMMY JSON BLOB
+	String output = "{\"Talon-SDI12\":null}"; //DUMMY JSON BLOB
 	// const time_t startTime = clearTime; //Grab current clear time //FIX! change to report the time used in calculation
 	// const time_t stopTime = time; //Grab the time the current update is made
 	// updateCount(time); //Update counter values
