@@ -262,45 +262,45 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		//TBD
 		// Serial.println(millis()); //DEBUG!
 		output = output + "\"lvl-3\":{"; //OPEN JSON BLOB
-		/////// TEST I2C WITH LOOPBACK ////////////
-		output = output + "\"I2C_PORT_FAIL\":["; 
-		disableDataAll(); //Turn off all data 
-		digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect to external I2C
-		Wire.beginTransmission(0x22);
-		int error = Wire.endTransmission(); //Get error from write to empty bus
-		if(error == 0) throwError(I2C_OB_ISO_FAIL | talonPortErrorCode); //We should not be able to connect to IO exp in this state, if we can throw error 
-		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
-		// ioAlpha.digitalWrite(pinsAlpha::LOOPBACK_EN, HIGH); //Connect loopback 
-		for(int i = 0; i <= numPorts; i++) { //Iterate over each port
-			int totalErrors = 0; //Track how many of the test calls fail
-			if(i > 0) {
-				// enablePower(i, true); //Turn on power to a given power after testing the base bus
-				enableData(i, true); //Turn on data to a given port after testing the base bus
-			}
-			// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect to external I2C (w/loopback enabled, so it is a combined bus now)
-			for(int adr = 0; adr < sizeof(expectedI2CVals); adr++) { //Check for addresses present 
-				Wire.beginTransmission(expectedI2CVals[adr]); //Check for each expected address
-				// Wire.write(0x00);
-				int error = Wire.endTransmission();
-				if(error == 2) { //If bad bus error detected 
-					// Serial.print("I2C Error Detected: "); //DEBUG!
-					// Serial.println(error);
-					totalErrors++; //If a failure occours, increment error count
-				}
-				// delay(1); //DEBUG!
-			}
-			Serial.print("Total Errors: "); //DEBUG!
-			Serial.println(totalErrors);
-			if(totalErrors > 0) { //If any bus failures were detected 
-				throwError(I2C_PORT_FAIL | talonPortErrorCode | i); //Throw error for the port under test
-				output = output + String(i) + ",";
-			}
-			if(i > 0) enableData(i, false); //Disable bus again
-		}
-		if(output.substring(output.length() - 1).equals(",")) {
-			output = output.substring(0, output.length() - 1); //Trim trailing ',' if present
-		}
-		output = output + "]"; //Close I2C port array
+		// /////// TEST I2C WITH LOOPBACK ////////////
+		// output = output + "\"I2C_PORT_FAIL\":["; 
+		// disableDataAll(); //Turn off all data 
+		// // digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect to external I2C
+		// Wire.beginTransmission(0x22);
+		// int error = Wire.endTransmission(); //Get error from write to empty bus
+		// if(error == 0) throwError(I2C_OB_ISO_FAIL | talonPortErrorCode); //We should not be able to connect to IO exp in this state, if we can throw error 
+		// // digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
+		// // ioAlpha.digitalWrite(pinsAlpha::LOOPBACK_EN, HIGH); //Connect loopback 
+		// for(int i = 0; i <= numPorts; i++) { //Iterate over each port
+		// 	int totalErrors = 0; //Track how many of the test calls fail
+		// 	if(i > 0) {
+		// 		// enablePower(i, true); //Turn on power to a given power after testing the base bus
+		// 		enableData(i, true); //Turn on data to a given port after testing the base bus
+		// 	}
+		// 	// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect to external I2C (w/loopback enabled, so it is a combined bus now)
+		// 	for(int adr = 0; adr < sizeof(expectedI2CVals); adr++) { //Check for addresses present 
+		// 		Wire.beginTransmission(expectedI2CVals[adr]); //Check for each expected address
+		// 		// Wire.write(0x00);
+		// 		int error = Wire.endTransmission();
+		// 		if(error == 2) { //If bad bus error detected 
+		// 			// Serial.print("I2C Error Detected: "); //DEBUG!
+		// 			// Serial.println(error);
+		// 			totalErrors++; //If a failure occours, increment error count
+		// 		}
+		// 		// delay(1); //DEBUG!
+		// 	}
+		// 	Serial.print("Total Errors: "); //DEBUG!
+		// 	Serial.println(totalErrors);
+		// 	if(totalErrors > 0) { //If any bus failures were detected 
+		// 		throwError(I2C_PORT_FAIL | talonPortErrorCode | i); //Throw error for the port under test
+		// 		output = output + String(i) + ",";
+		// 	}
+		// 	if(i > 0) enableData(i, false); //Disable bus again
+		// }
+		// if(output.substring(output.length() - 1).equals(",")) {
+		// 	output = output.substring(0, output.length() - 1); //Trim trailing ',' if present
+		// }
+		// output = output + "]"; //Close I2C port array
 		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
 		// ioAlpha.digitalWrite(pinsAlpha::LOOPBACK_EN, LOW); //Disable loopback 
 		// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Return to default external connecton
@@ -599,7 +599,32 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 			output = output.substring(0, output.length() - 1); //Trim trailing ',' is present
 		}
 		output = output + "],"; // close array
-
+		/////////// LOOPBACK /////////////
+		output = output + "\"LB\":"; //Add loopback key
+		disableDataAll(); //Disconnect all external data
+		ioSense.digitalWrite(pinsSense::MUX_EN, LOW); //Enable mux to enable loopback 
+		ioAlpha.digitalWrite(pinsAlpha::FOUT, HIGH); //Release FOUT
+		ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Force enable
+		Serial1.begin(1200, SERIAL_8N1); //Make sure serial is enabled 
+		while(Serial1.available() > 0) Serial1.read(); //Clear buffer
+		Serial1.println("DEADBEEF");
+		Serial.flush(); //Wait to finish transmission
+		String result = Serial1.readStringUntil('\n');
+		Serial.print("Loopback result"); //DEBUG!
+		Serial.println(result); //DEBUG!
+		result = result.trim(); //Get rid of format characters 
+		if(result.equals("DEADBEEF")) output = output + "1,"; //Append pass
+		else output = output + "0,"; //Otherwise append fail
+		///////// ISOLATION ///////////
+		output = output + "\"ISO\":"; //Add isolation key
+		ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Disable loopback
+		while(Serial1.available() > 0) Serial1.read(); //Clear buffer
+		Serial1.println("DEADBEEF");
+		Serial.flush(); //Wait to finish transmission
+		if(Serial1.available() > 0) output = output + "0,"; //Fail if any serial info is read in
+		else output = output + "1,"; //Append pass if no data read in
+		// ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Default back to input
+		///////// GET PORT ADRs ////////////
 		output = output + "\"ADRs\":["; //Grab address from each port
 		for(int i = 1; i <= numPorts; i++) {
 			enableData(i, true); //Turn on data port
