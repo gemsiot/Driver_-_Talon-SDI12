@@ -224,12 +224,12 @@ String SDI12Talon::getErrors()
 	// return -1; //Return fault if unknown cause 
 }
 
-int SDI12Talon::throwError(uint32_t error)
-{
-	errors[(numErrors++) % MAX_NUM_ERRORS] = error; //Write error to the specified location in the error array
-	if(numErrors > MAX_NUM_ERRORS) errorOverwrite = true; //Set flag if looping over previous errors 
-	return numErrors;
-}
+// int SDI12Talon::throwError(uint32_t error)
+// {
+// 	errors[(numErrors++) % MAX_NUM_ERRORS] = error; //Write error to the specified location in the error array
+// 	if(numErrors > MAX_NUM_ERRORS) errorOverwrite = true; //Set flag if looping over previous errors 
+// 	return numErrors;
+// }
 
 String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 {
