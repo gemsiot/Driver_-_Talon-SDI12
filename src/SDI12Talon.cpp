@@ -233,6 +233,7 @@ String SDI12Talon::getErrors()
 
 String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 {
+	if(getTalonPort() == 0) throwError(TALON_MISSING); //If Talon not found, report failure
 	String output = "{\"Talon-SDI12\":{";
 	if(diagnosticLevel == 0) {
 		//TBD
