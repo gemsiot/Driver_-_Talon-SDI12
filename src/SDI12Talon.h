@@ -196,6 +196,7 @@ class SDI12Talon: public Talon
   
 
   public:
+	constexpr static const char* CLASS_NAME = "SDI12";
 
     /**
      * @brief Instantiate the Talon, defaults to using pre-specified port and hardware version
@@ -242,7 +243,7 @@ class SDI12Talon: public Talon
     // uint8_t getTalonPort() {
     //   return talonPort + 1;
     // }
-    bool isPresent();
+    static bool isPresent();
     uint8_t getNumPorts() {
       return numPorts;
     }
