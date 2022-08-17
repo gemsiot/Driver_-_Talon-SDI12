@@ -201,7 +201,7 @@ String SDI12Talon::getErrors()
 	// 	}
 	// 	return 0; //Return success indication
 	// }
-	String output = "{\"Talon-SDI12\":{"; // OPEN JSON BLOB
+	String output = "\"Talon-SDI12\":{"; // OPEN JSON BLOB
 	output = output + "\"CODES\":["; //Open codes pair
 
 	for(int i = 0; i < min(MAX_NUM_ERRORS, numErrors); i++) { //Interate over used element of array without exceeding bounds
@@ -217,7 +217,7 @@ String SDI12Talon::getErrors()
 	else output = output + "0,"; //Otherwise set it as clear
 	output = output + "\"NUM\":" + String(numErrors) + ","; //Append number of errors
 	output = output + "\"Pos\":[" + getTalonPortString() + "]"; //Concatonate position 
-	output = output + "}}"; //CLOSE JSON BLOB
+	output = output + "}"; //CLOSE JSON BLOB
 	numErrors = 0; //Clear error count
 	return output;
 
@@ -234,21 +234,21 @@ String SDI12Talon::getErrors()
 String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 {
 	if(getTalonPort() == 0) throwError(TALON_MISSING); //If Talon not found, report failure
-	String output = "{\"Talon-SDI12\":{";
+	String output = "\"Talon-SDI12\":{";
 	if(diagnosticLevel == 0) {
 		//TBD
-		output = output + "\"lvl-0\":{},";
+		// output = output + "\"lvl-0\":{},";
 		// return output + "\"lvl-0\":{},\"Pos\":[" + String(port) + "]}}";
 	}
 
 	if(diagnosticLevel <= 1) {
 		//TBD
-		output = output + "\"lvl-1\":{},";
+		// output = output + "\"lvl-1\":{},";
 	}
 
 	if(diagnosticLevel <= 2) {
 		//TBD
-		output = output + "\"lvl-2\":{},";
+		// output = output + "\"lvl-2\":{},";
 		// String level3 = selfDiagnostic(3, time); //Call the lower level of self diagnostic 
 		// level3 = level3.substring(1,level3.length() - 1); //Trim off opening and closing brace
 		// output = output + level3; //Concatonate level 4 on top of level 3
@@ -262,7 +262,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 	if(diagnosticLevel <= 3) {
 		//TBD
 		// Serial.println(millis()); //DEBUG!
-		output = output + "\"lvl-3\":{"; //OPEN JSON BLOB
+		// output = output + "\"lvl-3\":{"; //OPEN JSON BLOB
 		// /////// TEST I2C WITH LOOPBACK ////////////
 		// output = output + "\"I2C_PORT_FAIL\":["; 
 		// disableDataAll(); //Turn off all data 
@@ -441,7 +441,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		// String level4 = selfDiagnostic(4); //Call the lower level of self diagnostic 
 		// level4 = level4.substring(1,level4.length() - 1); //Trim off opening and closing brace
 		// output = output + level4; //Concatonate level 4 on top of level 3
-		output = output + "},"; //CLOSE JSON BLOB
+		// output = output + "},"; //CLOSE JSON BLOB
 		// return output + ",\"Pos\":[" + String(port) + "]}}";
 		// return output;
 
@@ -450,7 +450,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 	if(diagnosticLevel <= 4) {
 		// String output = selfDiagnostic(5); //Call the lower level of self diagnostic 
 		// output = output.substring(0,output.length() - 1); //Trim off closing brace
-		output = output + "\"lvl-4\":{"; //OPEN JSON BLOB
+		// output = output + "\"lvl-4\":{"; //OPEN JSON BLOB
 
 		// ioSense.begin(); //Initalize voltage sensor IO expander
 		///////////// SENSE VOLTAGE AND CURRENT FOR PORTS ///////////
@@ -496,10 +496,10 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 				// Serial.print(adcSense.GetVoltage(true)*currentDiv*1000, 6); //Print high resolution current measure in mA
 				// Serial.print(" mA\n");  
 			}
-			output = output + "]"; //Close group
+			output = output + "],"; //Close group
 		}
 		else { //If unable to initialzie ADC
-			output = output + "\"PORT_V\":[null],\"PORT_I\":[null]";
+			output = output + "\"PORT_V\":[null],\"PORT_I\":[null],";
 			throwError(SENSE_ADC_INIT_FAIL | talonPortErrorCode); //Throw error for ADC failure
 		}
 		ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Turn MUX back off 
@@ -555,14 +555,14 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		// // String level5 = selfDiagnostic(5); //Call the lower level of self diagnostic 
 		// // level5 = level5.substring(1,level5.length() - 1); //Trim off opening and closing brace
 		// // output = output + level5; //Concatonate level 5 on top of level 4
-		output = output + "},"; //CLOSE JSON BLOB
+		// output = output + "},"; //CLOSE JSON BLOB
 		// return output + ",\"Pos\":[" + String(port) + "]}}";
 		// return output;
 
 	}
 
 	if(diagnosticLevel <= 5) {
-		output = output + "\"lvl-5\":{"; //OPEN JSON BLOB
+		// output = output + "\"lvl-5\":{"; //OPEN JSON BLOB
 		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
 		disableDataAll(); //Turn off all data 
 		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
@@ -636,7 +636,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 			if(i < numPorts) output = output + ","; //Add comma if not last entry
 			enableData(i, false); //Turn data port back off
 		}
-		output = output + "]"; //Close array
+		output = output + "],"; //Close array
 
 		// disableDataAll(); //Make sure all data ports are turned off to begin with
 		// for(int port = 1; port <= numPorts; port++) { //CHECK EACH SENSOR PORT FOR ADDRESSES
@@ -666,7 +666,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		// 	output = output + "]"; //Close array
 		// 	if(port < numPorts) output = output + ","; //Only add comma if not the last entry in array 
 		// }
-		output = output + "}"; //Close pair
+		// output = output + "}"; //Close pair
 		
 		
 		// // output = output + "}"; //CLOSE JSON BLOB, 
@@ -675,7 +675,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		// // return output + ",\"Pos\":[" + String(port) + "]}}";
 		// // return output;
 	}
-	return output + ",\"Pos\":[" + getTalonPort() + "]}}"; //Write position in logical form - Return compleated closed output
+	return output + "\"Pos\":[" + getTalonPortString() + "]}"; //Write position in logical form - Return compleated closed output
 	// else return ""; //Return empty string if reaches this point 
 
 	// return "{}"; //Return null if reach end	
@@ -703,6 +703,7 @@ int SDI12Talon::restart()
 	bool hasCriticalError = false;
 	bool hasError = false;
 	if(hasReset()) begin(0, hasCriticalError, hasError); //If Talon has been power cycled, run begin function again
+	//THROW ERROR!
 	// setPinDefaults(); //Reset IO expander pins to their default state
 	bool hasFault = false;
 	for(int i = 0; i < numPorts; i++) {
@@ -764,41 +765,41 @@ int SDI12Talon::restart()
 	return 0; //FIX!
 }
 
-String SDI12Talon::getData(time_t time)
-{
-	// String output = "{\"I2C_TALON\":"; //OPEN JSON BLOB
-	String output = "{\"Talon-SDI12\":null}"; //DUMMY JSON BLOB
-	// const time_t startTime = clearTime; //Grab current clear time //FIX! change to report the time used in calculation
-	// const time_t stopTime = time; //Grab the time the current update is made
-	// updateCount(time); //Update counter values
-	// updateAnalog(); //Update analog readings
+// String SDI12Talon::getData(time_t time)
+// {
+// 	// String output = "{\"I2C_TALON\":"; //OPEN JSON BLOB
+// 	String output = "{\"Talon-SDI12\":null}"; //DUMMY JSON BLOB
+// 	// const time_t startTime = clearTime; //Grab current clear time //FIX! change to report the time used in calculation
+// 	// const time_t stopTime = time; //Grab the time the current update is made
+// 	// updateCount(time); //Update counter values
+// 	// updateAnalog(); //Update analog readings
 	
-	// String output = "{\"AUX_TALON\":{"; //OPEN JSON BLOB
+// 	// String output = "{\"AUX_TALON\":{"; //OPEN JSON BLOB
 
-	// String analogData = "\"AIN\":[";
-	// String analogAvgData = "\"AIN_AVG\":[";
-	// String countData = "\"COUNTS\":[";
-	// String rateData = "\"RATE\":[";
-	// for(int i = 0; i < 3; i++) {
-	// 	analogData = analogData + String(analogVals[i], 7) + ",";
-	// 	analogAvgData = analogAvgData + String(analogValsAvg[i], 7) + ",";
-	// 	countData = countData + String(counts[i]) + ",";
-	// 	rateData = rateData + String(rates[i], 7) + ",";
-	// }
-	// analogData = analogData.substring(0,analogData.length() - 1) + "],"; //Trim trailing ',' and close array
-	// analogAvgData = analogAvgData.substring(0,analogAvgData.length() - 1) + "],";
-	// countData = countData.substring(0,countData.length() - 1) + "],";
-	// rateData = rateData.substring(0,rateData.length() - 1) + "],";
+// 	// String analogData = "\"AIN\":[";
+// 	// String analogAvgData = "\"AIN_AVG\":[";
+// 	// String countData = "\"COUNTS\":[";
+// 	// String rateData = "\"RATE\":[";
+// 	// for(int i = 0; i < 3; i++) {
+// 	// 	analogData = analogData + String(analogVals[i], 7) + ",";
+// 	// 	analogAvgData = analogAvgData + String(analogValsAvg[i], 7) + ",";
+// 	// 	countData = countData + String(counts[i]) + ",";
+// 	// 	rateData = rateData + String(rates[i], 7) + ",";
+// 	// }
+// 	// analogData = analogData.substring(0,analogData.length() - 1) + "],"; //Trim trailing ',' and close array
+// 	// analogAvgData = analogAvgData.substring(0,analogAvgData.length() - 1) + "],";
+// 	// countData = countData.substring(0,countData.length() - 1) + "],";
+// 	// rateData = rateData.substring(0,rateData.length() - 1) + "],";
 
-	// output = output + analogData + analogAvgData + countData + rateData; //Concatonate all sub-strings
-	// output = output + "\"START\":" + String((long) startTime) + ","; //Concatonate start time
-	// output = output + "\"STOP\":" + String((long) stopTime) + ","; //Concatonate stop time
-	// output = output + "\"Pos\":[" + String(port) + "]"; //Concatonate position 
-	// output = output + "}}"; //CLOSE JSON BLOB
-	// return output;
-	return output; //DEBUG!
+// 	// output = output + analogData + analogAvgData + countData + rateData; //Concatonate all sub-strings
+// 	// output = output + "\"START\":" + String((long) startTime) + ","; //Concatonate start time
+// 	// output = output + "\"STOP\":" + String((long) stopTime) + ","; //Concatonate stop time
+// 	// output = output + "\"Pos\":[" + String(port) + "]"; //Concatonate position 
+// 	// output = output + "}}"; //CLOSE JSON BLOB
+// 	// return output;
+// 	return output; //DEBUG!
 
-}
+// }
 
 
 
@@ -990,12 +991,12 @@ String SDI12Talon::getMetadata()
 		}
 	}
 
-	String metadata = "{\"Talon-SDI12\":{";
+	String metadata = "\"Talon-SDI12\":{";
 	if(error == 0) metadata = metadata + "\"SN\":\"" + uuid + "\","; //Append UUID only if read correctly, skip otherwise 
 	metadata = metadata + "\"Hardware\":\"v" + String(version >> 4, HEX) + "." + String(version & 0x0F, HEX) + "\","; //Report version as modded BCD
 	metadata = metadata + "\"Firmware\":\"v" + FIRMWARE_VERSION + "\","; //Report firmware version as modded BCD
 	metadata = metadata + "\"Pos\":[" + getTalonPortString() + "]"; //Concatonate position 
-	metadata = metadata + "}}"; //CLOSE  
+	metadata = metadata + "}"; //CLOSE  
 	return metadata; 
 	return ""; //DEBUG!
 }

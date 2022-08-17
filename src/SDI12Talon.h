@@ -221,7 +221,7 @@ class SDI12Talon: public Talon
     
     // String errorTags[MAX_NUM_ERRORS]
     
-    String getData(time_t time);
+    // String getData(time_t time);
     int restart();
     String selfDiagnostic(uint8_t diagnosticLevel = 4, time_t time = 0); //Default to just level 4 diagnostic, default to time = 0
     // int sleepMode(uint8_t mode) //DEFINE!
