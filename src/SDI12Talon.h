@@ -50,6 +50,7 @@ Distributed as-is; no warranty is given.
 #include <Wire.h>
 #include "PCAL9535A.h"
 #include <MCP3421.h>
+#include <MCP3221.h>
 #include <SparkFun_PCA9536_Arduino_Library.h>
 // #include "SparkFun_PCA9536_Arduino_Library/src/SparkFun_PCA9536_Arduino_Library.h"
 #include <Sensor.h>
@@ -221,7 +222,7 @@ class SDI12Talon: public Talon
     
     // String errorTags[MAX_NUM_ERRORS]
     
-    // String getData(time_t time);
+    String getData(time_t time);
     int restart();
     String selfDiagnostic(uint8_t diagnosticLevel = 4, time_t time = 0); //Default to just level 4 diagnostic, default to time = 0
     // int sleepMode(uint8_t mode) //DEFINE!
@@ -258,6 +259,7 @@ class SDI12Talon: public Talon
     const unsigned long timeoutStandard = 380; //Standard timeout period for most commands is 380ms 
     PCAL9535A ioAlpha; //ADR = 0x25
     MCP3421 adcSense;
+    MCP3221 apogeeSense;
     PCA9536 ioSense;
     uint8_t expectedI2CVals[7] = {0x00, 0x25, 0x30, 0x41, 0x50, 0x58, 0x6B};
     
@@ -284,7 +286,7 @@ class SDI12Talon: public Talon
 
     // static time_t readTime = 0;
     bool initDone = false; //Used to keep track if the initaliztion has run - used by hasReset() 
-    
+    bool apogeeDetected = false; //Keep track if an SDI-12 device has been detected on the apogee port, default to false to use analog
     bool faults[4] = {false, false, false, false}; //Used to store if any of the ports have had a power fault
     // uint32_t errors[MAX_NUM_ERRORS] = {0};
     // uint8_t numErrors = 0; //Used to track the index of errors array

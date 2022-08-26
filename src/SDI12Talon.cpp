@@ -16,7 +16,7 @@ Distributed as-is; no warranty is given.
 
 #include <SDI12Talon.h>
 
-SDI12Talon::SDI12Talon(uint8_t talonPort_, uint8_t hardwareVersion) : ioAlpha(0x25), adcSense(0x6B)
+SDI12Talon::SDI12Talon(uint8_t talonPort_, uint8_t hardwareVersion) : ioAlpha(0x25), adcSense(0x6B), apogeeSense(0x4D)
 {
 	if(talonPort_ > 0) talonPort = talonPort_ - 1;
 	else talonPort = 255; //Reset to null default if not in range
@@ -86,6 +86,19 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 			Serial.print("Port Fault: "); //DEBUG!
 			Serial.println(i);
 			//THROW ERROR!
+		}
+		else if(i == 4) { //If testing port 4 (Apogee port) AND fault did not occour while turning it on, check for SDI-12 presence 
+			unsigned long currentTime = millis(); //Grab current time
+			float val = 0;
+			Serial.println("Apogee SDI-12 Testing:"); //DEBUG!
+			while((millis() - currentTime) < 100) { //Take continuious measures for up to 100ms
+				val = apogeeSense.getVoltage(5.0); //Get voltage with a 5V refernce value 
+				Serial.println(val);
+				if(val > 4.5) {
+					apogeeDetected = true; //If pulse is observed, flag SDI-12 as detected
+					break; //Exit while if condition met
+				}
+			}
 		}
 	}
 	delay(500); //Delay to wait for high power draw of O2 sensor to be over 
@@ -260,6 +273,9 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 	}
 
 	if(diagnosticLevel <= 3) {
+		output = output + "\"Apogee_Type\":";
+		if(apogeeDetected == true) output = output + "\"SDI-12\","; //Report SDI-12 if set to true
+		else output = output + "\"Analog\","; //Otherwise report default 
 		//TBD
 		// Serial.println(millis()); //DEBUG!
 		// output = output + "\"lvl-3\":{"; //OPEN JSON BLOB
@@ -503,6 +519,11 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 			throwError(SENSE_ADC_INIT_FAIL | talonPortErrorCode); //Throw error for ADC failure
 		}
 		ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Turn MUX back off 
+
+		enableData(4, false); //Switch to ADC input
+		delay(10); //wait for voltage to settle
+		output = output + "\"Apogee_V\":" + String(apogeeSense.getVoltage(5.0)) + ","; //Append apogee voltage reading, if SDI-12 is detected or not
+		enableData(4, true); //Try to renable data, if analog has been detected, this will fail and it will keep it as analog configuration
 		// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Return to default external connecton
 		// ioAlpha.digitalWrite(pinsAlpha::EN1, HIGH); //Make sure all ports are enabled before testing 
 		// ioAlpha.digitalWrite(pinsAlpha::EN2, HIGH); 
@@ -765,41 +786,16 @@ int SDI12Talon::restart()
 	return 0; //FIX!
 }
 
-// String SDI12Talon::getData(time_t time)
-// {
-// 	// String output = "{\"I2C_TALON\":"; //OPEN JSON BLOB
-// 	String output = "{\"Talon-SDI12\":null}"; //DUMMY JSON BLOB
-// 	// const time_t startTime = clearTime; //Grab current clear time //FIX! change to report the time used in calculation
-// 	// const time_t stopTime = time; //Grab the time the current update is made
-// 	// updateCount(time); //Update counter values
-// 	// updateAnalog(); //Update analog readings
-	
-// 	// String output = "{\"AUX_TALON\":{"; //OPEN JSON BLOB
-
-// 	// String analogData = "\"AIN\":[";
-// 	// String analogAvgData = "\"AIN_AVG\":[";
-// 	// String countData = "\"COUNTS\":[";
-// 	// String rateData = "\"RATE\":[";
-// 	// for(int i = 0; i < 3; i++) {
-// 	// 	analogData = analogData + String(analogVals[i], 7) + ",";
-// 	// 	analogAvgData = analogAvgData + String(analogValsAvg[i], 7) + ",";
-// 	// 	countData = countData + String(counts[i]) + ",";
-// 	// 	rateData = rateData + String(rates[i], 7) + ",";
-// 	// }
-// 	// analogData = analogData.substring(0,analogData.length() - 1) + "],"; //Trim trailing ',' and close array
-// 	// analogAvgData = analogAvgData.substring(0,analogAvgData.length() - 1) + "],";
-// 	// countData = countData.substring(0,countData.length() - 1) + "],";
-// 	// rateData = rateData.substring(0,rateData.length() - 1) + "],";
-
-// 	// output = output + analogData + analogAvgData + countData + rateData; //Concatonate all sub-strings
-// 	// output = output + "\"START\":" + String((long) startTime) + ","; //Concatonate start time
-// 	// output = output + "\"STOP\":" + String((long) stopTime) + ","; //Concatonate stop time
-// 	// output = output + "\"Pos\":[" + String(port) + "]"; //Concatonate position 
-// 	// output = output + "}}"; //CLOSE JSON BLOB
-// 	// return output;
-// 	return output; //DEBUG!
-
-// }
+String SDI12Talon::getData(time_t time)
+{
+	// String output = "{\"I2C_TALON\":"; //OPEN JSON BLOB
+	String output = "\"Talon-SDI12\":{"; //OPEN JSON BLOB
+	output = output + "\"Apogee\":";
+	if(apogeeDetected == true) output = output + "null"; //If SDI is used, there is no data, report null
+	else output = output + String(apogeeSense.getVoltage(5.0)); //Append voltage result if no SDI-12 detected 
+	output = output + "}"; //Close blob
+	return output; //DEBUG!
+}
 
 
 
@@ -819,8 +815,10 @@ void SDI12Talon::setPinDefaults()
 	// ioAlpha.digitalWrite(pinsAlpha::LOOPBACK_EN, LOW); //Preempt loopback to off
 	// ioAlpha.pinMode(pinsAlpha::LOOPBACK_EN, OUTPUT); 
 	ioAlpha.pinMode(pinsAlpha::FOUT, OUTPUT);
+	ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Default to recieve 
 	ioAlpha.pinMode(pinsAlpha::DIR, OUTPUT);
-	ioAlpha.digitalWrite(pinsAlpha::DIR, HIGH); //Default to transmit 
+	// ioAlpha.digitalWrite(pinsAlpha::DIR, HIGH); //Default to transmit 
+	
 
 	ioAlpha.pinMode(pinsAlpha::POS_DETECT, INPUT); //Set position dection switch as input
 
@@ -841,7 +839,7 @@ void SDI12Talon::setPinDefaults()
 	ioAlpha.digitalWrite(pinsAlpha::DATA_EN1, LOW); //Preempt all I2C enables to low
 	ioAlpha.digitalWrite(pinsAlpha::DATA_EN2, LOW); 
 	ioAlpha.digitalWrite(pinsAlpha::DATA_EN3, LOW); 
-	ioAlpha.digitalWrite(pinsAlpha::DATA_EN4, LOW); 
+	ioAlpha.digitalWrite(pinsAlpha::DATA_EN4, LOW); //Default to analog connection
 
 	ioAlpha.pinMode(pinsAlpha::DATA_EN1, OUTPUT); //Set all I2C enable to OUTPUT
 	ioAlpha.pinMode(pinsAlpha::DATA_EN2, OUTPUT);
@@ -1058,6 +1056,7 @@ int SDI12Talon::enableData(uint8_t port, bool state)
 	// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect I2C to internal I2C
 	// pinMode(D6, OUTPUT); //DEBUG!
 	// digitalWrite(D6, HIGH); //Connect I2C to internal I2C
+	if(!apogeeDetected && port == 4) return false; //If Apogee port is commanded and SDI-12 has not been detected, ignore and return 
 	ioAlpha.pinMode(pinsAlpha::DATA_EN1 + port - 1, OUTPUT);
 	ioAlpha.digitalWrite(pinsAlpha::DATA_EN1 + port - 1, state);
 	if(ioAlpha.digitalRead(pinsAlpha::DATA_EN1 + port - 1) == state) success = true; //If readback matches, set is a success
