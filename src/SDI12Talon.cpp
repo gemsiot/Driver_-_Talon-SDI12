@@ -93,7 +93,7 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 			Serial.println("Apogee SDI-12 Testing:"); //DEBUG!
 			while((millis() - currentTime) < 100) { //Take continuious measures for up to 100ms
 				val = apogeeSense.getVoltage(5.0); //Get voltage with a 5V refernce value 
-				Serial.println(val);
+				// Serial.println(val);
 				if(val > 4.5) {
 					apogeeDetected = true; //If pulse is observed, flag SDI-12 as detected
 					break; //Exit while if condition met
@@ -628,9 +628,10 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		ioAlpha.digitalWrite(pinsAlpha::FOUT, HIGH); //Release FOUT
 		ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Force enable
 		Serial1.begin(1200, SERIAL_8N1); //Make sure serial is enabled 
-		while(Serial1.available() > 0) Serial1.read(); //Clear buffer
+		unsigned long localTime = millis();
+		while(Serial1.available() > 0 && (millis() - localTime) < 10) Serial1.read(); //Clear buffer, read for at most 10ms
 		Serial1.println("DEADBEEF");
-		Serial.flush(); //Wait to finish transmission
+		Serial1.flush(); //Wait to finish transmission
 		String result = Serial1.readStringUntil('\n');
 		Serial.print("Loopback result"); //DEBUG!
 		Serial.println(result); //DEBUG!
@@ -640,9 +641,10 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		///////// ISOLATION ///////////
 		output = output + "\"ISO\":"; //Add isolation key
 		ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Disable loopback
-		while(Serial1.available() > 0) Serial1.read(); //Clear buffer
+		localTime = millis();
+		
 		Serial1.println("DEADBEEF");
-		Serial.flush(); //Wait to finish transmission
+		Serial1.flush(); //Wait to finish transmission
 		if(Serial1.available() > 0) output = output + "0,"; //Fail if any serial info is read in
 		else output = output + "1,"; //Append pass if no data read in
 		// ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Default back to input
@@ -1147,7 +1149,8 @@ String SDI12Talon::sendCommand(String Command)
 	Serial1.print(serialConvert8N1to7E1(Command)); //Send converted value
 	Serial1.flush(); //Make sure data is transmitted before releasing the bus
 	delay(2); //DEBUG! Return to 1ms??
-	while(Serial1.available() > 0) Serial1.read(); //DEBUG! Clear buffer 
+	unsigned long localTime = millis();
+	while(Serial1.available() > 0 && (millis() - localTime) < 10) Serial1.read(); //Clear buffer, read for at most 10ms //DEBUG!
 	releaseBus(); //Switch bus to recieve 
 	
 
