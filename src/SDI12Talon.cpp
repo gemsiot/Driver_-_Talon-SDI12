@@ -146,10 +146,10 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 	
 	///////////////////// RUN DIAGNOSTICS /////////////
 	// digitalWrite(21, LOW); //DEBUG!!!! TURN OFF I2C OB
-	String diagnosticResults = selfDiagnostic(2); //Run level two diagnostic //DEBUG!
+	// String diagnosticResults = selfDiagnostic(2); //Run level two diagnostic //DEBUG!
 	// String diagnosticResults = "{}"; //DEBUG!
-	Serial.print("Init Diagnostic: "); //DEBUG!
-	Serial.println(diagnosticResults); //DEBUG!
+	// Serial.print("Init Diagnostic: "); //DEBUG!
+	// Serial.println(diagnosticResults); //DEBUG!
 
 	////////// RESET COUNTERS //////////////////////////
 	// clearCount(time); //Clear counter and pass time info in
@@ -168,7 +168,8 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 	// if(criticalFault == true) return -1; //If a critical fault was detected, return with critical fault code
 	if(numErrors - startingErrors > 0 || fault == true) fault = true; //If a non-critical fault was detected, or additional errors thrown, set fault
 	// else return 0; //Only if no additional errors present, return operational state
-	return diagnosticResults; //Return diagnostic string
+	// return diagnosticResults; //Return diagnostic string
+	return "";
 
 }
 
@@ -250,8 +251,6 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 	String output = "\"Talon-SDI12\":{";
 	if(diagnosticLevel == 0) {
 		//TBD
-		// output = output + "\"lvl-0\":{},";
-		// return output + "\"lvl-0\":{},\"Pos\":[" + String(port) + "]}}";
 	}
 
 	if(diagnosticLevel <= 1) {
@@ -261,449 +260,149 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 
 	if(diagnosticLevel <= 2) {
 		//TBD
-		// output = output + "\"lvl-2\":{},";
-		// String level3 = selfDiagnostic(3, time); //Call the lower level of self diagnostic 
-		// level3 = level3.substring(1,level3.length() - 1); //Trim off opening and closing brace
-		// output = output + level3; //Concatonate level 4 on top of level 3
-		// output = output + "},"; //CLOSE JSON BLOB
-		// return output + ",\"Pos\":[" + String(port) + "]}}";
-		// return output;
-		// return "{\"lvl-2\":{}," + selfDiagnostic(3, time).substring(0, ) }";
-		// pinMode(KestrelPins::PortAPins[port], INPUT); //DEBUG!
 	}
 
 	if(diagnosticLevel <= 3) {
 		output = output + "\"Apogee_Type\":";
-		if(apogeeDetected == true) output = output + "\"SDI-12\","; //Report SDI-12 if set to true
-		else output = output + "\"Analog\","; //Otherwise report default 
+		if(getTalonPort() != 0) {
+			if(apogeeDetected == true) output = output + "\"SDI-12\","; //Report SDI-12 if set to true
+			else output = output + "\"Analog\","; //Otherwise report default 
+		}
+		else output = output + "null,"; //Report null if talon not detected 
 		//TBD
-		// Serial.println(millis()); //DEBUG!
-		// output = output + "\"lvl-3\":{"; //OPEN JSON BLOB
-		// /////// TEST I2C WITH LOOPBACK ////////////
-		// output = output + "\"I2C_PORT_FAIL\":["; 
-		// disableDataAll(); //Turn off all data 
-		// // digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect to external I2C
-		// Wire.beginTransmission(0x22);
-		// int error = Wire.endTransmission(); //Get error from write to empty bus
-		// if(error == 0) throwError(I2C_OB_ISO_FAIL | talonPortErrorCode); //We should not be able to connect to IO exp in this state, if we can throw error 
-		// // digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
-		// // ioAlpha.digitalWrite(pinsAlpha::LOOPBACK_EN, HIGH); //Connect loopback 
-		// for(int i = 0; i <= numPorts; i++) { //Iterate over each port
-		// 	int totalErrors = 0; //Track how many of the test calls fail
-		// 	if(i > 0) {
-		// 		// enablePower(i, true); //Turn on power to a given power after testing the base bus
-		// 		enableData(i, true); //Turn on data to a given port after testing the base bus
-		// 	}
-		// 	// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect to external I2C (w/loopback enabled, so it is a combined bus now)
-		// 	for(int adr = 0; adr < sizeof(expectedI2CVals); adr++) { //Check for addresses present 
-		// 		Wire.beginTransmission(expectedI2CVals[adr]); //Check for each expected address
-		// 		// Wire.write(0x00);
-		// 		int error = Wire.endTransmission();
-		// 		if(error == 2) { //If bad bus error detected 
-		// 			// Serial.print("I2C Error Detected: "); //DEBUG!
-		// 			// Serial.println(error);
-		// 			totalErrors++; //If a failure occours, increment error count
-		// 		}
-		// 		// delay(1); //DEBUG!
-		// 	}
-		// 	Serial.print("Total Errors: "); //DEBUG!
-		// 	Serial.println(totalErrors);
-		// 	if(totalErrors > 0) { //If any bus failures were detected 
-		// 		throwError(I2C_PORT_FAIL | talonPortErrorCode | i); //Throw error for the port under test
-		// 		output = output + String(i) + ",";
-		// 	}
-		// 	if(i > 0) enableData(i, false); //Disable bus again
-		// }
-		// if(output.substring(output.length() - 1).equals(",")) {
-		// 	output = output.substring(0, output.length() - 1); //Trim trailing ',' if present
-		// }
-		// output = output + "]"; //Close I2C port array
-		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
-		// ioAlpha.digitalWrite(pinsAlpha::LOOPBACK_EN, LOW); //Disable loopback 
-		// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Return to default external connecton
-		///////// TEST INPUT DRIVES //////////////
-		// const int numPulses = 5; //Number of pulses to use for testing
-		// for(int i = 0; i < 3; i++) {
-		// 	ioBeta.digitalWrite(pinsBeta::OD1 + i, LOW); //Preempt the output as low
-		// 	ioBeta.pinMode(pinsBeta::OD1 + i, OUTPUT); //Set line to output	
-		// 	ioBeta.digitalWrite(pinsBeta::D1_SENSE + i, LOW); //Preempt low
-		// 	ioBeta.pinMode(pinsBeta::D1_SENSE + i, OUTPUT); //Set to output to drive push-pull
-		// 	ioBeta.pinMode(pinsBeta::OUT1 + i, INPUT); //Set as input so we can measure the output of the input buffer
-		// }
-		// clearCount(time); //Clear counters to start with 0 value
-		// bool inputError = false; //Used to keep track if there is an error in the input driver circuit
-		// for(int port = 0; port < 3; port++) {
-		// 	for(int p = 0; p < numPulses; p++) { //Pulse input 5 times
-		// 		if(ioBeta.digitalRead(pinsBeta::OUT1 + port) != HIGH) inputError = true; //If the OUTx line is not sitting high, there is an error in the input circuit
-		// 		ioBeta.digitalWrite(pinsBeta::D1_SENSE + port, HIGH);
-		// 		if(ioBeta.digitalRead(pinsBeta::OUT1 + port) != LOW) inputError = true; //If after toggling the Dx input high, the output does not go low there is an error in the input circuit 
-		// 		delay(1);
-		// 		ioBeta.digitalWrite(pinsBeta::D1_SENSE + port, LOW);
-		// 		delay(1);
-		// 	}
-		// 	readCounters(); //Read in values after testing
-		// 	// clearCount(time);
-		// 	if(inputError) { //If the OUTx line did not change as expected when toggled, this is a buffer error
-		// 		throwError(INPUT_BUF_ERROR | 0b0100 | port); //OR with port number and Dx indicator 
-		// 	}
-		// 	else if(counts[port] != numPulses) { //If OUTx line responded as expected, but we STILL did not end up with the correct count, then this is a counter problem 
-		// 		throwError(COUNTER_INCREMENT_ERROR | port); 
-		// 		// for(int i = 0; i < 3; i++) { //DEBUG!
-		// 		// 	Serial.println(counts[i]); 
-		// 		// }
-		// 	}	
-		// 	inputError = false; //Reset input error
-		// }
-		// clearCount(time); //Clear counters again
-		// readCounters(); //Read in values after clearing 
-		// if(counts[0] != 0 || counts[1] != 0 || counts[2] != 0) throwError(COUNTER_CLEAR_ERROR); //If counter does not clear correctly, throw error 
-		// inputError = false; //Clear error flag for next test 
-		
-		// for(int i = 0; i < 3; i++) {
-		// 	ioBeta.digitalWrite(pinsBeta::D1_SENSE + i, LOW); //Drive all Dx_SENSE lines low to prevent erronious output ticks
-		// 	ioBeta.digitalWrite(pinsBeta::OD1 + i, LOW); //Drive all ODx lines low to start
-		// }
-	
-		// for(int port = 0; port < 3; port++) {
-		// 	for(int p = 0; p < numPulses; p++) { //Pulse input 5 times
-		// 		if(ioBeta.digitalRead(pinsBeta::OUT1 + port) != HIGH) inputError = true; //If the OUTx line is not sitting low, there is an error in the input circuit
-		// 		// ioBeta.digitalWrite(pinsBeta::OD1 + port, HIGH);
-		// 		ioBeta.pinMode(pinsBeta::OD1 + port, INPUT); //Switch ODx to input to release to pullup (do this instead of push-pull to prevent output shorting)
-		// 		if(ioBeta.digitalRead(pinsBeta::OUT1 + port) != LOW) inputError = true; //If after toggling the ODx input high, the output does not go low there is an error in the input circuit //FIX! switch to interrupt measurment for this part
-		// 		delay(1);
-		// 		// ioBeta.digitalWrite(pinsBeta::OD1 + port, LOW);
-		// 		ioBeta.pinMode(pinsBeta::OD1 + port, OUTPUT); //Turn on ODx output to drive low
-		// 		delay(1);
-		// 	}
-		// 	// readCounters(); //Read in values after testing
-		// 	if(inputError) { //If the OUTx line did not change as expected when toggled, this is a buffer error
-		// 		throwError(INPUT_BUF_ERROR | port); //OR with port number
-		// 	}
-		// }
-
-		// ///////////// IDENTIFY Dx INPUTS //////////
-		// bool digitalInputOccupied[3] = {false}; //Used to store results of digital input testing
-		// int digitalInputCurrentState[3] = {0}; //Used to store current state of digital input (0 = LOW, 1 = HIGH, -1 = N/A)
-
-		// bool pullupVal = 0;
-		// bool pulldownVal = 0;
-		// for(int port = 0; port < 3; port++) {
-		// 	ioBeta.pinMode(pinsBeta::D1_SENSE + port, INPUT_PULLUP); //Set given digital input pin as pullup
-		// 	delay(1); //Wait for line to charge if floating
-		// 	pullupVal = ioBeta.digitalRead(pinsBeta::D1_SENSE + port); //Read state when pullup is applied
-		// 	ioBeta.pinMode(pinsBeta::D1_SENSE + port, INPUT_PULLDOWN); //Set given digital input pin as pulldown
-		// 	delay(1);
-		// 	pulldownVal = ioBeta.digitalRead(pinsBeta::D1_SENSE + port); //Read state when pullup is disconnected 
-		// 	if(pullupVal == HIGH && pulldownVal == LOW) digitalInputOccupied[port] = false;
-		// 	else digitalInputOccupied[port] = true;
-
-		// 	if(digitalInputOccupied[port] == true) {
-		// 		ioBeta.pinMode(pinsBeta::D1_SENSE, INPUT); //Return to high impedance input
-		// 		digitalInputCurrentState[port] = ioBeta.digitalRead(pinsBeta::D1_SENSE + port); //Read in current value
-		// 	}
-		// 	else digitalInputCurrentState[port] = -1; //Set to N/A if the port is unoccupied  
-		// }
-
-		// String occupied = "\"Dx_USE\":[";
-		// String currentState = "\"Dx_STATE\":[";
-		// for(int i = 0; i < 3; i++) {
-		// 	occupied = occupied + String(digitalInputOccupied[i]) + ",";
-		// 	currentState = currentState + String(digitalInputCurrentState[i]) + ",";
-		// }
-		// occupied = occupied.substring(0, occupied.length() - 1) + "],"; //Trim off trailing ',' and close
-		// currentState = currentState.substring(0, currentState.length() - 1) + "],"; //Trim off trailing ',' and close
-		// output = output + occupied + currentState; //Concatonate together
-
-
-		// for(int i = 0; i < 3; i++) { //Return pins to defaults
-		// 	ioBeta.pinMode(pinsBeta::OD1 + i, INPUT); //Return to input	
-		// 	ioBeta.pinMode(pinsBeta::D1_SENSE + i, INPUT); //Return to input
-		// 	ioBeta.pinMode(pinsBeta::OUT1 + i, INPUT); //Keep as input
-		// }
-		// clearCount(time); //Clear counters again //Total time between start and this clear event is < 300ms, ok to use same timestamp
-		// // Serial.println(millis()); //DEBUG!
-
-		// ////////////// TEST ANALOG OUTPUTS /////////////////
-		// float senseOpen[3] = {0};
-		// float senseDischarged[3] = {0};
-		// float senseLoaded[3] = {0};
-		// unsigned long dischargePeriod = 250; //Time to wait while discharging in ms
-
-		// for(int port = 0; port < 3; port++) {
-		// 	senseOpen[port] = float(adcRead(port, 0))*(adcGainConv[0]); //Read baseline port value at full range
-		// 	ioAlpha.pinMode(pinsAlpha::ACTRL1 + port, OUTPUT); //Set MOSFET drive to output
-		// 	ioAlpha.digitalWrite(pinsAlpha::ACTRL1 + port, HIGH); //Turn on MOSFET to discharge output
-		// 	delay(dischargePeriod); //Wait for RC circuit to discharge
-		// 	senseLoaded[port] = float(adcRead(port, 0))*(adcGainConv[0]); //Read fully discharged value
-		// 	ioAlpha.digitalWrite(pinsAlpha::ACTRL1 + port, LOW); //Turn MOSFET off to release line
-		// 	senseDischarged[port] = float(adcRead(port, 0))*(adcGainConv[0]); //Read in discharged value
-		// }
-		// output = output + "\"AIN_SENSE\":{"; //Open array
-
-		// String open = "\"OPEN\":[";
-		// String discharged = "\"DIS\":[";
-		// String loaded = "\"LOAD\":[";
-
-		// for(int i = 0; i < 3; i++) {
-		// 	open = open + String(senseOpen[i], 4) + ",";
-		// 	discharged = discharged + String(senseDischarged[i], 4) + ",";
-		// 	loaded = loaded + String(senseLoaded[i], 4) + ",";
-		// }
-		// open = open.substring(0, open.length() - 1) + "],"; //Trim off trailing ',' and close
-		// discharged = discharged.substring(0, discharged.length() - 1) + "],"; //Trim off trailing ',' and close
-		// loaded = loaded.substring(0, loaded.length() - 1) + "]"; //Trim off trailing ',' and close
-
-		// output = output + open + discharged + loaded + "}},"; //Close AIN_SENSE
-		// String level4 = selfDiagnostic(4); //Call the lower level of self diagnostic 
-		// level4 = level4.substring(1,level4.length() - 1); //Trim off opening and closing brace
-		// output = output + level4; //Concatonate level 4 on top of level 3
-		// output = output + "},"; //CLOSE JSON BLOB
-		// return output + ",\"Pos\":[" + String(port) + "]}}";
-		// return output;
-
  	}
 
 	if(diagnosticLevel <= 4) {
-		// String output = selfDiagnostic(5); //Call the lower level of self diagnostic 
-		// output = output.substring(0,output.length() - 1); //Trim off closing brace
-		// output = output + "\"lvl-4\":{"; //OPEN JSON BLOB
-
-		// ioSense.begin(); //Initalize voltage sensor IO expander
-		///////////// SENSE VOLTAGE AND CURRENT FOR PORTS ///////////
-		// for(int p = 1; p <= numPorts; p++) {
-		// 	enablePower(p, true); //Turn on power to all ports before measuring //DEBUG!
-		// }
-		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
-		for(int i = pinsSense::MUX_SEL0; i <= pinsSense::MUX_EN; i++) { //Set all pins to output
-			ioSense.pinMode(i, OUTPUT); 
-		}
-		ioAlpha.digitalWrite(pinsAlpha::SENSE_EN, HIGH); //Make sure 3v3 Sense is turned on
-		ioSense.digitalWrite(pinsSense::MUX_EN, LOW); //Turn MUX on 
-		int SenseError = adcSense.Begin(); //Initialize ADC 
-		if(SenseError == 0) { //Only proceed if ADC connects correctly
-			adcSense.SetResolution(18); //Set to max resolution (we paid for it right?) 
-
-			output = output + "\"PORT_V\":["; //Open group
-			ioSense.digitalWrite(pinsSense::MUX_SEL2, LOW); //Read voltages
-			for(int i = 0; i < numPorts; i++){ //Increment through all ports
-				ioSense.digitalWrite(pinsSense::MUX_SEL0, i & 0b01); //Set with lower bit
-				ioSense.digitalWrite(pinsSense::MUX_SEL1, (i & 0b10) >> 1); //Set with high bit
-				delay(1); //Wait for voltage to stabilize
-				output = output + String(adcSense.GetVoltage(true)*voltageDiv, 6); //Print high resultion voltage as volts
-				if(i < (numPorts - 1)) output = output + ","; //Append comma if not the last reading
-				// Serial.print("\tPort");
-				// Serial.print(i);
-				// Serial.print(":");
-				// Serial.print(adcSense.GetVoltage(true)*voltageDiv, 6); //Print high resolution voltage
-				// Serial.print(" V\n");  
+		if(getTalonPort() != 0) { //If Talon has been detected, run tests
+			for(int i = pinsSense::MUX_SEL0; i <= pinsSense::MUX_EN; i++) { //Set all pins to output
+				ioSense.pinMode(i, OUTPUT); 
 			}
-			output = output + "],"; //Close group
-			output = output + "\"PORT_I\":["; //Open group
-			ioSense.digitalWrite(pinsSense::MUX_SEL2, HIGH); //Read currents
-			for(int i = 0; i < numPorts; i++){ //Increment through 4 voltages
-				ioSense.digitalWrite(pinsSense::MUX_SEL0, i & 0b01); //Set with lower bit
-				ioSense.digitalWrite(pinsSense::MUX_SEL1, (i & 0b10) >> 1); //Set with high bit
-				delay(1); //Wait for voltage to stabilize
-				output = output + String(adcSense.GetVoltage(true)*currentDiv*1000, 6); //Print high resultion current as mA
-				if(i < (numPorts - 1)) output = output + ","; //Append comma if not the last reading
-				// Serial.print("\tPort");
-				// Serial.print(i);
-				// Serial.print(":");
-				// Serial.print(adcSense.GetVoltage(true)*currentDiv*1000, 6); //Print high resolution current measure in mA
-				// Serial.print(" mA\n");  
+			ioAlpha.digitalWrite(pinsAlpha::SENSE_EN, HIGH); //Make sure 3v3 Sense is turned on
+			ioSense.digitalWrite(pinsSense::MUX_EN, LOW); //Turn MUX on 
+			int SenseError = adcSense.Begin(); //Initialize ADC 
+			if(SenseError == 0) { //Only proceed if ADC connects correctly
+				adcSense.SetResolution(18); //Set to max resolution (we paid for it right?) 
+
+				output = output + "\"PORT_V\":["; //Open group
+				ioSense.digitalWrite(pinsSense::MUX_SEL2, LOW); //Read voltages
+				for(int i = 0; i < numPorts; i++){ //Increment through all ports
+					ioSense.digitalWrite(pinsSense::MUX_SEL0, i & 0b01); //Set with lower bit
+					ioSense.digitalWrite(pinsSense::MUX_SEL1, (i & 0b10) >> 1); //Set with high bit
+					delay(1); //Wait for voltage to stabilize
+					output = output + String(adcSense.GetVoltage(true)*voltageDiv, 6); //Print high resultion voltage as volts
+					if(i < (numPorts - 1)) output = output + ","; //Append comma if not the last reading
+					// Serial.print("\tPort");
+					// Serial.print(i);
+					// Serial.print(":");
+					// Serial.print(adcSense.GetVoltage(true)*voltageDiv, 6); //Print high resolution voltage
+					// Serial.print(" V\n");  
+				}
+				output = output + "],"; //Close group
+				output = output + "\"PORT_I\":["; //Open group
+				ioSense.digitalWrite(pinsSense::MUX_SEL2, HIGH); //Read currents
+				for(int i = 0; i < numPorts; i++){ //Increment through 4 voltages
+					ioSense.digitalWrite(pinsSense::MUX_SEL0, i & 0b01); //Set with lower bit
+					ioSense.digitalWrite(pinsSense::MUX_SEL1, (i & 0b10) >> 1); //Set with high bit
+					delay(1); //Wait for voltage to stabilize
+					output = output + String(adcSense.GetVoltage(true)*currentDiv*1000, 6); //Print high resultion current as mA
+					if(i < (numPorts - 1)) output = output + ","; //Append comma if not the last reading
+					// Serial.print("\tPort");
+					// Serial.print(i);
+					// Serial.print(":");
+					// Serial.print(adcSense.GetVoltage(true)*currentDiv*1000, 6); //Print high resolution current measure in mA
+					// Serial.print(" mA\n");  
+				}
+				output = output + "],"; //Close group
 			}
-			output = output + "],"; //Close group
+			else { //If unable to initialzie ADC
+				output = output + "\"PORT_V\":[null],\"PORT_I\":[null],";
+				throwError(SENSE_ADC_INIT_FAIL | talonPortErrorCode); //Throw error for ADC failure
+			}
+			ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Turn MUX back off 
+
+			enableData(4, false); //Switch to ADC input
+			delay(10); //wait for voltage to settle
+			output = output + "\"Apogee_V\":" + String(apogeeSense.getVoltage(5.0)) + ","; //Append apogee voltage reading, if SDI-12 is detected or not
+			enableData(4, true); //Try to renable data, if analog has been detected, this will fail and it will keep it as analog configuration
 		}
-		else { //If unable to initialzie ADC
-			output = output + "\"PORT_V\":[null],\"PORT_I\":[null],";
-			throwError(SENSE_ADC_INIT_FAIL | talonPortErrorCode); //Throw error for ADC failure
-		}
-		ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Turn MUX back off 
-
-		enableData(4, false); //Switch to ADC input
-		delay(10); //wait for voltage to settle
-		output = output + "\"Apogee_V\":" + String(apogeeSense.getVoltage(5.0)) + ","; //Append apogee voltage reading, if SDI-12 is detected or not
-		enableData(4, true); //Try to renable data, if analog has been detected, this will fail and it will keep it as analog configuration
-		// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Return to default external connecton
-		// ioAlpha.digitalWrite(pinsAlpha::EN1, HIGH); //Make sure all ports are enabled before testing 
-		// ioAlpha.digitalWrite(pinsAlpha::EN2, HIGH); 
-		// ioAlpha.digitalWrite(pinsAlpha::EN3, HIGH); 
-		// ioAlpha.digitalWrite(pinsAlpha::MUX_EN, LOW); //Turn MUX on 
-		// ioAlpha.digitalWrite(pinsAlpha::REG_EN, HIGH); //Turn on power to ADC and any 5V ports
-		// adcConfig(0x71, 0x80); //Configure the ADC to read from channel 3 (MUX in) and use full scale range (6.144V) and 128 sps for high speed 
-		// float portInputVoltage[3] = {0};
-		// float portOutputVoltage[3] = {0};
-		// String portInputString = "\"RAIL_IN\":["; //Sub string for input vals
-		// String portOutputString = "\"RAIL_OUT\":["; //Sub string for output vals
-
- 		// for (int i = 0; i < 3; i++) {
- 		// 	ioAlpha.digitalWrite(pinsAlpha::MUX_SEL0, (i & 0x01)); //Write low bit of counter to MUX_SEL0
- 		// 	ioAlpha.digitalWrite(pinsAlpha::MUX_SEL1, ((i >> 1) & 0x01)); //Write high bit of counter to MUX_SEL1
-		// 	ioAlpha.digitalWrite(pinsAlpha::MUX_SEL2, LOW); //Read external ports first
-		// 	delay(1); //DEBUG!
-		// 	portOutputVoltage[i] = float(adcRead(3, 0))*(adcGainConv[0]); //Read from port 3 with no gain, convert to mV
-		// 	portOutputString = portOutputString + String(portOutputVoltage[i], 4) + ","; //Use max decimal places for min ADC resolution x.1875 
-		// 	ioAlpha.digitalWrite(pinsAlpha::MUX_SEL2, HIGH); //Read internal ports next
-		// 	delay(1); //DEBUG!
-		// 	portInputVoltage[i] = float(adcRead(3, 0))*(adcGainConv[0]); //Read from port 3 with no gain, convert to mV
-		// 	portInputString = portInputString + String(portInputVoltage[i], 4) + ","; //Use max decimal places for min ADC resolution x.1875 
-		// 	if((portInputVoltage[i] - portOutputVoltage[i])/portInputVoltage[i] > MAX_DISAGREE) throwError(BUS_DISAGREE | i); //Throw port disagree error and note position of port
-		// }
-		
-		// portInputString = portInputString.substring(0, portInputString.length() - 1) + "],"; //Trim trailing ',' and cap substring
-		// portOutputString = portOutputString.substring(0, portOutputString.length() - 1) + "]"; //Trim trailing ',' and cap substring
-
-		// const float max3v3 = 3300*(1 + MAX_DISAGREE/2.0); //Calc ranges for bus values (working in mV!)
-		// const float min3v3 = 3300*(1 - MAX_DISAGREE/2.0);
-		// const float max5v = 5000*(1 + MAX_DISAGREE/2.0);
-		// const float min5v = 5000*(1 - MAX_DISAGREE/2.0);
-		// for(int i = 0; i < 3; i++) {
-		// 	if(portInputVoltage[i] < max3v3 && portInputVoltage[i] > min3v3) portVoltageSettings[i] = 0; //If within 3v3 range, set port config accordingly 
-		// 	else if(portInputVoltage[i] < max5v && portInputVoltage[i] > min5v) portVoltageSettings[i] = 1; //If within the 5v range, set the port config accordingly 
-		// 	else {
-		// 		if(portInputVoltage[i] < min3v3) portVoltageSettings[i] = 0; //Make assumption about switch position, set config accordingly
-		// 		else portVoltageSettings[i] = 1;
-		// 		throwError(BUS_OUTOFRANGE | i); //Throw out of range error and note position of port
-		// 	}
-		// }
-		// ioAlpha.digitalWrite(pinsAlpha::MUX_SEL0, 1); //Connect MUX to 5V rail
-		// ioAlpha.digitalWrite(pinsAlpha::MUX_SEL1, 1);
-		// ioAlpha.digitalWrite(pinsAlpha::MUX_SEL2, HIGH); 
-		// float busVoltage_5V = float(adcRead(3, 0))*(adcGainConv[0]); //Read 5V port with no gain, convert to mV
-		// if((busVoltage_5V - 5000)/5000 > MAX_DISAGREE) throwError(BUS_OUTOFRANGE | 3); //Throw out of range error and note position of port
-
-		// output = output + portInputString + portOutputString + ",\"5V0_RAIL\":" + String(busVoltage_5V, 4) +  "},"; //Concatonate strings and cap
-		// // String level5 = selfDiagnostic(5); //Call the lower level of self diagnostic 
-		// // level5 = level5.substring(1,level5.length() - 1); //Trim off opening and closing brace
-		// // output = output + level5; //Concatonate level 5 on top of level 4
-		// output = output + "},"; //CLOSE JSON BLOB
-		// return output + ",\"Pos\":[" + String(port) + "]}}";
-		// return output;
-
+		else output = output + "\"PORT_V\":[null],\"PORT_I\":[null],\"Apogee_V\":null,"; //Append null filled string
 	}
+	
 
 	if(diagnosticLevel <= 5) {
-		// output = output + "\"lvl-5\":{"; //OPEN JSON BLOB
-		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
-		disableDataAll(); //Turn off all data 
-		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
-		for(int i = 0; i < numPorts; i++) {
-			// overflow[i] = ioBeta.getInterrupt(pinsBeta::OVF1 + i); //Read in overflow values
-			faults[i] = ioAlpha.getInterrupt(pinsAlpha::FAULT1 + i); //Read in fault values
-			if (faults[i] == true) {
-				throwError(SENSOR_POWER_FAIL | portErrorCode | i); //Throw power fault error with given port appended 
+		if(getTalonPort() != 0) {
+			disableDataAll(); //Turn off all data 
+			for(int i = 0; i < numPorts; i++) {
+				faults[i] = ioAlpha.getInterrupt(pinsAlpha::FAULT1 + i); //Read in fault values
+				if (faults[i] == true) {
+					throwError(SENSOR_POWER_FAIL | portErrorCode | i); //Throw power fault error with given port appended 
+				}
 			}
-		}
 
-		output = output + "\"ALPHA\":" + String(ioAlpha.readBus()) + ","; //Append ALPHA port readout
-		// output = output + "\"BETA\":" + String(ioBeta.readBus()) + ","; //Append BETA port readout
-		output = output + "\"ALPHA_INT\":" + String(ioAlpha.getAllInterrupts(PCAL9535A::IntAge::BOTH)) + ","; //Append ALPHA interrupt readout
-		uint8_t senseBus = 0; //Manually concatonate pin reads from ioSense expander
-		for(int i = 0; i < 4; i++) { //NOT associated with numPorts, which is why variable is not used
-			senseBus = senseBus | (ioSense.read(i) << i); //DEBUG!
-			// senseBus = 0; //DEBUG!
-		}
-		output = output + "\"MUX\":" + String(senseBus) + ","; //Append MUX controller readout
-
-		output = output + "\"I2C_OB\":[";
-		// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal I2C
-		// digitalWrite(D6, HIGH); //Connect to internal I2C
-		// ioAlpha.digitalWrite(pinsAlpha::LOOPBACK_EN, LOW); //Make sure loopback is turned off
-		for(int adr = 0; adr < 128; adr++) { //Check for addresses present 
-			Wire.beginTransmission(adr);
-			// Wire.write(0x00);
-			if(Wire.endTransmission() == 0) {
-				output = output + String(adr) + ",";
+			output = output + "\"ALPHA\":" + String(ioAlpha.readBus()) + ","; //Append ALPHA port readout
+			output = output + "\"ALPHA_INT\":" + String(ioAlpha.getAllInterrupts(PCAL9535A::IntAge::BOTH)) + ","; //Append ALPHA interrupt readout
+			uint8_t senseBus = 0; //Manually concatonate pin reads from ioSense expander
+			for(int i = 0; i < 4; i++) { //NOT associated with numPorts, which is why variable is not used
+				senseBus = senseBus | (ioSense.read(i) << i); //DEBUG!
 			}
-			delay(1); //DEBUG!
-		}
-		if(output.substring(output.length() - 1).equals(",")) {
-			output = output.substring(0, output.length() - 1); //Trim trailing ',' is present
-		}
-		output = output + "],"; // close array
-		/////////// LOOPBACK /////////////
-		output = output + "\"LB\":"; //Add loopback key
-		disableDataAll(); //Disconnect all external data
-		ioSense.digitalWrite(pinsSense::MUX_EN, LOW); //Enable mux to enable loopback 
-		ioAlpha.digitalWrite(pinsAlpha::FOUT, HIGH); //Release FOUT
-		ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Force enable
-		Serial1.begin(1200, SERIAL_8N1); //Make sure serial is enabled 
-		unsigned long localTime = millis();
-		while(Serial1.available() > 0 && (millis() - localTime) < 10) Serial1.read(); //Clear buffer, read for at most 10ms
-		Serial1.println("DEADBEEF");
-		Serial1.flush(); //Wait to finish transmission
-		String result = Serial1.readStringUntil('\n');
-		Serial.print("Loopback result"); //DEBUG!
-		Serial.println(result); //DEBUG!
-		result = result.trim(); //Get rid of format characters 
-		if(result.equals("DEADBEEF")) output = output + "1,"; //Append pass
-		else output = output + "0,"; //Otherwise append fail
-		///////// ISOLATION ///////////
-		output = output + "\"ISO\":"; //Add isolation key
-		ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Disable loopback
-		localTime = millis();
-		
-		Serial1.println("DEADBEEF");
-		Serial1.flush(); //Wait to finish transmission
-		if(Serial1.available() > 0) output = output + "0,"; //Fail if any serial info is read in
-		else output = output + "1,"; //Append pass if no data read in
-		// ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Default back to input
-		///////// GET PORT ADRs ////////////
-		output = output + "\"ADRs\":["; //Grab address from each port
-		for(int i = 1; i <= numPorts; i++) {
-			enableData(i, true); //Turn on data port
-			String adr = sendCommand("?!");
-			int adrVal = adr.toInt();
-			if(adr.equals("") || (!adr.equals("0") && adrVal == 0)) output = output + "null"; //If no return, report null
-			else output = output + adr; //Otherwise report the read value
-			if(i < numPorts) output = output + ","; //Add comma if not last entry
-			enableData(i, false); //Turn data port back off
-		}
-		output = output + "],"; //Close array
+			output = output + "\"MUX\":" + String(senseBus) + ","; //Append MUX controller readout
 
-		// disableDataAll(); //Make sure all data ports are turned off to begin with
-		// for(int port = 1; port <= numPorts; port++) { //CHECK EACH SENSOR PORT FOR ADDRESSES
-		// 	output = output + "\"I2C_" + String(port) + "\":["; //Append identifer for
-		// 	Serial.print("Enable States: "); //DEBUG! And following prints
-		// 	Serial.print(enablePower(port, true)); //Turn on power to given port //DEBUG! REPLACE!
-		// 	Serial.println(enableData(port, true)); //Turn on data to given port
-		// 	// delay(10);
-		// 	// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect to external I2C
-		// 	for(int adr = 0; adr < 128; adr++) { //Check for addresses present 
-		// 		Wire.beginTransmission(adr);
-		// 		// Wire.write(0x00);
-		// 		int error = Wire.endTransmission();
-		// 		if(adr == 0) { //DEBUG!
-		// 			Serial.print("Zero Error: ");
-		// 			Serial.println(error); 
-		// 		}
-		// 		if(error == 0) {
-		// 			output = output + String(adr) + ",";
-		// 		}
-		// 		delay(1); //DEBUG!
-		// 	}
-		// 	enableData(port, false); //Turn off data to given port
-		// 	if(output.substring(output.length() - 1).equals(",")) {
-		// 		output = output.substring(0, output.length() - 1); //Trim trailing ',' if present
-		// 	}
-		// 	output = output + "]"; //Close array
-		// 	if(port < numPorts) output = output + ","; //Only add comma if not the last entry in array 
-		// }
-		// output = output + "}"; //Close pair
+			output = output + "\"I2C_OB\":[";
+			for(int adr = 0; adr < 128; adr++) { //Check for addresses present 
+				Wire.beginTransmission(adr);
+				if(Wire.endTransmission() == 0) {
+					output = output + String(adr) + ",";
+				}
+				delay(1); //DEBUG!
+			}
+			if(output.substring(output.length() - 1).equals(",")) {
+				output = output.substring(0, output.length() - 1); //Trim trailing ',' is present
+			}
+			output = output + "],"; // close array
+			/////////// LOOPBACK /////////////
+			output = output + "\"LB\":"; //Add loopback key
+			disableDataAll(); //Disconnect all external data
+			ioSense.digitalWrite(pinsSense::MUX_EN, LOW); //Enable mux to enable loopback 
+			ioAlpha.digitalWrite(pinsAlpha::FOUT, HIGH); //Release FOUT
+			ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Force enable
+			Serial1.begin(1200, SERIAL_8N1); //Make sure serial is enabled 
+			while(Serial1.available() > 0) Serial1.read(); //Clear buffer
+			Serial1.println("DEADBEEF");
+			Serial.flush(); //Wait to finish transmission
+			String result = Serial1.readStringUntil('\n');
+			Serial.print("Loopback result"); //DEBUG!
+			Serial.println(result); //DEBUG!
+			result = result.trim(); //Get rid of format characters 
+			if(result.equals("DEADBEEF")) output = output + "1,"; //Append pass
+			else output = output + "0,"; //Otherwise append fail
+			///////// ISOLATION ///////////
+			output = output + "\"ISO\":"; //Add isolation key
+			ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Disable loopback
+			while(Serial1.available() > 0) Serial1.read(); //Clear buffer
+			Serial1.println("DEADBEEF");
+			Serial.flush(); //Wait to finish transmission
+			if(Serial1.available() > 0) output = output + "0,"; //Fail if any serial info is read in
+			else output = output + "1,"; //Append pass if no data read in
+			// ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Default back to input
+			///////// GET PORT ADRs ////////////
+			output = output + "\"ADRs\":["; //Grab address from each port
+			for(int i = 1; i <= numPorts; i++) {
+				enableData(i, true); //Turn on data port
+				String adr = sendCommand("?!");
+				int adrVal = adr.toInt();
+				if(adr.equals("") || (!adr.equals("0") && adrVal == 0)) output = output + "null"; //If no return, report null
+				else output = output + adr; //Otherwise report the read value
+				if(i < numPorts) output = output + ","; //Add comma if not last entry
+				enableData(i, false); //Turn data port back off
+			}
+			output = output + "],"; //Close array
+
+			ioAlpha.clearInterrupt(PCAL9535A::IntAge::BOTH); //Clear all interrupts on Alpha
+		}
+		else output = output + "\"ALPHA\":null,\"ALPHA_INT\":null,\"MUX\":null,\"I2C_OB\":[null],\"LB\":null,\"ISO\":null,\"ADRs\":[null,null,null,null],"; //Append null filled string 
 		
-		
-		// // output = output + "}"; //CLOSE JSON BLOB, 
-		ioAlpha.clearInterrupt(PCAL9535A::IntAge::BOTH); //Clear all interrupts on Alpha
-		// // ioBeta.clearInterrupt(PCAL9535A::IntAge::BOTH); //Clear all interrupts on Beta
-		// // return output + ",\"Pos\":[" + String(port) + "]}}";
-		// // return output;
 	}
 	return output + "\"Pos\":[" + getTalonPortString() + "]}"; //Write position in logical form - Return compleated closed output
-	// else return ""; //Return empty string if reaches this point 
-
-	// return "{}"; //Return null if reach end	
-	// return output + ",\"Pos\":[" + String(port) + "]}}"; //Append position and return
-	// return "{}"; //DEBUG!
 }
 
 bool SDI12Talon::hasReset()
@@ -725,7 +424,7 @@ int SDI12Talon::restart()
 {
 	bool hasCriticalError = false;
 	bool hasError = false;
-	if(hasReset()) begin(0, hasCriticalError, hasError); //If Talon has been power cycled, run begin function again
+	if(hasReset() && initDone) begin(0, hasCriticalError, hasError); //If Talon has been power cycled, run begin function again
 	//THROW ERROR!
 	// setPinDefaults(); //Reset IO expander pins to their default state
 	bool hasFault = false;

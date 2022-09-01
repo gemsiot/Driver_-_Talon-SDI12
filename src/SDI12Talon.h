@@ -285,7 +285,7 @@ class SDI12Talon: public Talon
 
 
     // static time_t readTime = 0;
-    bool initDone = false; //Used to keep track if the initaliztion has run - used by hasReset() 
+    // bool initDone = false; //Used to keep track if the initaliztion has run - used by hasReset() 
     bool apogeeDetected = false; //Keep track if an SDI-12 device has been detected on the apogee port, default to false to use analog
     bool faults[4] = {false, false, false, false}; //Used to store if any of the ports have had a power fault
     // uint32_t errors[MAX_NUM_ERRORS] = {0};
