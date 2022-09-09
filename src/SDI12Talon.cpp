@@ -335,7 +335,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 			for(int i = 0; i < numPorts; i++) {
 				faults[i] = ioAlpha.getInterrupt(pinsAlpha::FAULT1 + i); //Read in fault values
 				if (faults[i] == true) {
-					throwError(SENSOR_POWER_FAIL | portErrorCode | i); //Throw power fault error with given port appended 
+					throwError(SENSOR_POWER_FAIL | talonPortErrorCode | i + 1); //Throw power fault error with given port appended 
 				}
 			}
 
@@ -424,13 +424,16 @@ int SDI12Talon::restart()
 {
 	bool hasCriticalError = false;
 	bool hasError = false;
-	if(hasReset() && initDone) begin(0, hasCriticalError, hasError); //If Talon has been power cycled, run begin function again
+	if(hasReset() && initDone) {
+		Serial.println("RESTART SDI12 TALON - BEGIN"); //DEBUG!
+		begin(0, hasCriticalError, hasError); //If Talon has been power cycled, run begin function again
+	}
 	//THROW ERROR!
 	// setPinDefaults(); //Reset IO expander pins to their default state
 	bool hasFault = false;
 	for(int i = 0; i < numPorts; i++) {
 		if(ioAlpha.getInterrupt(pinsAlpha::FAULT1 + i) || ioAlpha.digitalRead(pinsAlpha::FAULT1 + i)) { //If previous fault, or current fault
-			throwError(SENSOR_POWER_FAIL | talonPortErrorCode | i); //Throw error because a power failure has occured  
+			throwError(SENSOR_POWER_FAIL | talonPortErrorCode | i + 1); //Throw error because a power failure has occured  
 			hasFault = true; //Set flag if any return true
 		}
 	}
@@ -452,6 +455,19 @@ int SDI12Talon::restart()
 				faults[i - 1] = true; //Store which ports have faulted 
 				Serial.print("Port Fault: "); //DEBUG!
 				Serial.println(i);
+			}
+			else if(i == 4) { //If testing port 4 (Apogee port) AND fault did not occour while turning it on, check for SDI-12 presence 
+				unsigned long currentTime = millis(); //Grab current time
+				float val = 0;
+				Serial.println("Apogee SDI-12 Testing:"); //DEBUG!
+				while((millis() - currentTime) < 100) { //Take continuious measures for up to 100ms
+					val = apogeeSense.getVoltage(5.0); //Get voltage with a 5V refernce value 
+					// Serial.println(val);
+					if(val > 4.5) {
+						apogeeDetected = true; //If pulse is observed, flag SDI-12 as detected
+						break; //Exit while if condition met
+					}
+				}
 			}
 		}
 		delay(500); //Delay to wait for high power draw of O2 sensor to be over 
@@ -479,7 +495,7 @@ int SDI12Talon::restart()
 		ioAlpha.clearInterrupt(PCAL9535A::IntAge::BOTH); //Clear all interrupts on Alpha
 		for(int i = 0; i < numPorts; i++) {
 			if(ioAlpha.digitalRead(pinsAlpha::FAULT1 + i)) {
-				throwError(SENSOR_POWER_FAIL_PERSISTENT | talonPortErrorCode | i); //Throw error because a power failure still present
+				throwError(SENSOR_POWER_FAIL_PERSISTENT | talonPortErrorCode | i + 1); //Throw error because a power failure still present
 				hasFault = true; //Set flag if any return true
 			}
 		}
