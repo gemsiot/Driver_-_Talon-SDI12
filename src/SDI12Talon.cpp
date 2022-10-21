@@ -49,7 +49,7 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 
 	// for(int i = 0; i < 3; i++) {
 		if(ioError != 0) { 
-			throwError(IO_INIT_ERROR | ioError); //Throw error on first init error, not again 
+			throwError(IO_INIT_ERROR | ioError | talonPortErrorCode); //Throw error on first init error, not again 
 			criticalFault = true; //If any IO expander fails, this is a critical error  
 			// break;
 		}
@@ -692,7 +692,7 @@ String SDI12Talon::getMetadata()
 	// uint64_t uuid = 0;
 	String uuid = "";
 
-	if(error != 0) throwError(EEPROM_I2C_ERROR | error);
+	if(error != 0) throwError(TALON_EEPROM_READ_FAIL | error);
 	else {
 		uint8_t val = 0;
 		Wire.requestFrom(0x58, 8); //EEPROM address
@@ -776,7 +776,10 @@ int SDI12Talon::enableData(uint8_t port, bool state)
 	if(!apogeeDetected && port == 4) return false; //If Apogee port is commanded and SDI-12 has not been detected, ignore and return 
 	ioAlpha.pinMode(pinsAlpha::DATA_EN1 + port - 1, OUTPUT);
 	ioAlpha.digitalWrite(pinsAlpha::DATA_EN1 + port - 1, state);
-	if(ioAlpha.digitalRead(pinsAlpha::DATA_EN1 + port - 1) == state) success = true; //If readback matches, set is a success
+	if(ioAlpha.digitalRead(pinsAlpha::DATA_EN1 + port - 1) == state) {
+		success = true; //If readback matches, set is a success
+		portEnabled[port] = state; //Only update state if enable was successful 
+	}
 	else success = false; //Otherwise clear flag
 	// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect I2C to default external I2C
 	// digitalWrite(D6, LOW); //Connect I2C to default external I2C
@@ -804,6 +807,20 @@ int SDI12Talon::enablePower(uint8_t port, bool state)
 	}
 	
 	return success; //DEBUG!
+}
+
+int SDI12Talon::getEnabledPort()
+{
+	int numEnabledPorts = 0; 
+	int pos = 0;
+	for(int i = 0; i < numPorts; i++) {
+		if(portEnabled[i] == true) {
+			numEnabledPorts++; //Increment port count each time one is found
+			pos = i + 1; //Grab current port 
+		}
+	}
+	if(numEnabledPorts > 1) return 0; //If more than one port is enabled, return 0 (sys wide indication)
+	else return pos; //If exactly 1 or 0 are enabled return pos. Catches 0 condition and retuns 0 default, otherwise returns the singular port which is enabled
 }
 
 void SDI12Talon::sendBreak()
@@ -849,6 +866,49 @@ void SDI12Talon::releaseBus()
 	ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Set direction to inpout
 }
 
+int SDI12Talon::getAddress()
+{
+	String val = sendCommand("?!");
+	
+	if(val.charAt(0) > 0x39 || val.charAt(0) < 0x30) { //Check if address is outside of valid range
+		throwError(SDI12_COM_FAIL | 0x100 | talonPortErrorCode | getEnabledPort()); //Throw address out of range error
+		return -1;
+	}
+	else return val.toInt();
+}
+
+int SDI12Talon::startMeasurment(int Address)
+{
+	String val = command("M", Address);
+	for(int i = 0; i < val.length(); i++) {
+		if(val.charAt(i) < 0x30 || val.charAt(i) > 0x39 && val.charAt(i) != 0x0A && val.charAt(i) != 0x0D) { //If char is non-numeric AND not <CR> or <LF>) {
+			if(i == 0) throwError(SDI12_COM_FAIL | 0x100 | talonPortErrorCode | getEnabledPort()); //If in the first index, throw address out of range error
+			else throwError(SDI12_COM_FAIL | 0x300 | talonPortErrorCode | getEnabledPort()); //If not the first index, throw ACK out of range error
+			return -1;
+		}
+	}
+	return (val.substring(1,4)).toInt(); //Return number of seconds to wait
+}
+
+int SDI12Talon::startMeasurmentCRC(int Address)
+{
+	String val = command("MC", Address);
+	Serial.print("SDI12 Start Measure CRC: "); //DEBUG!
+	Serial.print(val);
+	Serial.print(",");
+	Serial.println(val.substring(1,3)); //DEBUG!
+	for(int i = 0; i < val.length(); i++) {
+		if(((val.charAt(i) < 0x30) || (val.charAt(i) > 0x39)) && (val.charAt(i) != 0x0A) && (val.charAt(i) != 0x0D)) { //If char is non-numeric AND not <CR> or <LF>
+			if(i == 0) throwError(SDI12_COM_FAIL | 0x100 | talonPortErrorCode | getEnabledPort()); //If in the first index, throw address out of range error, append the port which is enabled
+			else throwError(SDI12_COM_FAIL | 0x300 | talonPortErrorCode | getEnabledPort()); //If not the first index, throw ACK out of range error, append the port which is enabled 
+			Serial.print("CRC Fail: "); //DEBUG!
+			Serial.println(val.charAt(i), DEC); //Print value of char which failed
+			return -1;
+		}
+	}
+	return (val.substring(1,4)).toInt(); //Return number of seconds to wait
+}
+
 
 String SDI12Talon::command(String Command, int Address) //Correctly place address and line end into string to pass to SendCommand
 {
@@ -884,6 +944,58 @@ String SDI12Talon::sendCommand(String Command)
 	String Val = String(Data); //Convert to String
 	Val.trim(); //Get rid of any trailing characters 
 	return Val; 
+}
+
+bool SDI12Talon::testCRC(String message)
+{
+	// Serial.print("SDI12 Message: "); //DEBUG!
+	// Serial.println(message); //DEBUG!
+	uint8_t msgCRCBuff[4] = {0}; //Init buffer to grab characters from CRC, add 1 for terminating character enforced by getBytes
+	message.trim(); //Remove <CR> and <LF> if still there 
+	String msgCRCStr = message.substring(message.length() - 3); //Grab last 3 characters, this SHOULD be the CRC
+	// Serial.print("SDI12 CRC: "); //DEBUG!
+	// Serial.println(msgCRCStr); //DEBUG!
+	msgCRCStr.getBytes(msgCRCBuff, 4); //Convert chars to bytes, put them in array
+	// Serial.print("SDI12 CRC BUFF: "); //DEBUG!
+	// Serial.print(msgCRCBuff[0]); //DEBUG!
+	// Serial.print(msgCRCBuff[1]); //DEBUG!
+	// Serial.println(msgCRCBuff[2]); //DEBUG!
+	if((msgCRCBuff[0] & 0x40) != 0x40 || (msgCRCBuff[1] & 0x40) != 0x40 || (msgCRCBuff[2] & 0x40) != 0x40) { //If all CRC characters are not of the specified format, throw error and do not bother evaluating CRC
+		// Serial.println("CRC INVALID!"); 
+		throwError(SDI12_COM_FAIL | 0x200 | talonPortErrorCode | getEnabledPort()); //Throw error with CRC fail subtype
+		//THROW ERROR!
+		return 0; //Return false result
+	}
+	else {
+		uint16_t msgCRC = ((msgCRCBuff[0] & 0x3F) << 12) | ((msgCRCBuff[1] & 0x3F) << 6) | (msgCRCBuff[2] & 0x3F); //Concatonate CRC from individual characters 
+		// Serial.print("SDI12 MSG CRC: "); //DEBUG!
+		// Serial.println(msgCRC); //DEBUG!
+		String msgStr = message.substring(0, message.length() - 3); //Grab message up to CRC
+		const uint8_t msgLen = message.length() - 3; 
+		uint8_t msgBuff[msgLen + 1] = {0}; //Create buffer to store the bytes from each character of the message //Add 1 for terminating character enforced by getBytes
+		msgStr.getBytes(msgBuff, msgLen + 1); //Dump the message into bytes of the buffer
+
+		//Calculate internal CRC
+		uint16_t crc = 0;
+		for(int i = 0; i < msgLen; i++) { //Iterate over all characters in message
+			crc = msgBuff[i]^crc; //Take XOR of character and CRC
+			for(int count = 0; count < 8; count++) { //Iterate over each character bit
+				if((crc & 0x01) == 0x01) { //If LSB is 1
+					crc = crc >> 1; //Right shift 1
+					crc = 0xA001^crc; //CRC = XOR(0xA001, crc)
+				}
+				else { //If LSB is 0
+					crc = crc >> 1; //Right shift 1
+				}
+			}
+		}
+		// Serial.print("SDI12 CRC Test: "); //DEBUG!
+		// Serial.println(crc); //DEBUG!
+		if(crc == msgCRC) return 1; //If CRCs match, return success
+		else return 0; //If CRCs do not match, return a failure 
+	}
+	return 0;
+	
 }
 
 String SDI12Talon::serialConvert8N1to7E1(String Msg) //Take input message in 8N1 format and convert to 7E1 format 
