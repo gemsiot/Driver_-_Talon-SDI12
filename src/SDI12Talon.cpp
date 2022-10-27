@@ -366,8 +366,9 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 			ioAlpha.digitalWrite(pinsAlpha::FOUT, HIGH); //Release FOUT
 			ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Force enable
 			Serial1.begin(1200, SERIAL_8N1); //Make sure serial is enabled 
-			unsigned long localTime = millis();
-			while(Serial1.available() > 0 && (millis() - localTime) < 100) Serial1.read(); //Clear buffer with timeout
+			// unsigned long localTime = millis();
+			// while(Serial1.available() > 0 && (millis() - localTime) < 100) Serial1.read(); //Clear buffer with timeout
+			for(int i = 0; i < 128; i++) Serial1.read(); //Clear buffer
 			Serial1.println("DEADBEEF");
 			Serial1.flush(); //Wait to finish transmission
 			String result = Serial1.readStringUntil('\n');
@@ -379,8 +380,9 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 			///////// ISOLATION ///////////
 			output = output + "\"ISO\":"; //Add isolation key
 			ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Disable loopback
-			localTime = millis();
-			while(Serial1.available() > 0 && (millis() - localTime) < 100) Serial1.read(); //Clear buffer with timeout
+			// localTime = millis();
+			// while(Serial1.available() > 0 && (millis() - localTime) < 100) Serial1.read(); //Clear buffer with timeout
+			for(int i = 0; i < 128; i++) Serial1.read(); //Clear buffer
 			Serial1.println("DEADBEEF");
 			Serial1.flush(); //Wait to finish transmission
 			if(Serial1.available() > 0) output = output + "0,"; //Fail if any serial info is read in
