@@ -247,6 +247,7 @@ String SDI12Talon::getErrors()
 
 String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 {
+	unsigned long diagnosticStart = millis(); 
 	if(getTalonPort() == 0) throwError(TALON_MISSING); //If Talon not found, report failure
 	String output = "\"Talon-SDI12\":{";
 	if(diagnosticLevel == 0) {
@@ -360,34 +361,34 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 			}
 			output = output + "],"; // close array
 			/////////// LOOPBACK /////////////
-			output = output + "\"LB\":"; //Add loopback key
-			disableDataAll(); //Disconnect all external data
-			ioSense.digitalWrite(pinsSense::MUX_EN, LOW); //Enable mux to enable loopback 
-			ioAlpha.digitalWrite(pinsAlpha::FOUT, HIGH); //Release FOUT
-			ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Force enable
-			Serial1.begin(1200, SERIAL_8N1); //Make sure serial is enabled 
-			// unsigned long localTime = millis();
-			// while(Serial1.available() > 0 && (millis() - localTime) < 100) Serial1.read(); //Clear buffer with timeout
-			for(int i = 0; i < 128; i++) Serial1.read(); //Clear buffer
-			Serial1.println("DEADBEEF");
-			Serial1.flush(); //Wait to finish transmission
-			String result = Serial1.readStringUntil('\n');
-			Serial.print("Loopback result"); //DEBUG!
-			Serial.println(result); //DEBUG!
-			result = result.trim(); //Get rid of format characters 
-			if(result.equals("DEADBEEF")) output = output + "1,"; //Append pass
-			else output = output + "0,"; //Otherwise append fail
-			///////// ISOLATION ///////////
-			output = output + "\"ISO\":"; //Add isolation key
-			ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Disable loopback
-			// localTime = millis();
-			// while(Serial1.available() > 0 && (millis() - localTime) < 100) Serial1.read(); //Clear buffer with timeout
-			for(int i = 0; i < 128; i++) Serial1.read(); //Clear buffer
-			Serial1.println("DEADBEEF");
-			Serial1.flush(); //Wait to finish transmission
-			if(Serial1.available() > 0) output = output + "0,"; //Fail if any serial info is read in
-			else output = output + "1,"; //Append pass if no data read in
-			// ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Default back to input
+			// output = output + "\"LB\":"; //Add loopback key
+			// disableDataAll(); //Disconnect all external data
+			// ioSense.digitalWrite(pinsSense::MUX_EN, LOW); //Enable mux to enable loopback 
+			// ioAlpha.digitalWrite(pinsAlpha::FOUT, HIGH); //Release FOUT
+			// ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Force enable
+			// Serial1.begin(1200, SERIAL_8N1); //Make sure serial is enabled 
+			// // unsigned long localTime = millis();
+			// // while(Serial1.available() > 0 && (millis() - localTime) < 100) Serial1.read(); //Clear buffer with timeout
+			// for(int i = 0; i < 128; i++) Serial1.read(); //Clear buffer
+			// Serial1.println("DEADBEEF");
+			// Serial1.flush(); //Wait to finish transmission
+			// String result = Serial1.readStringUntil('\n');
+			// Serial.print("Loopback result"); //DEBUG!
+			// Serial.println(result); //DEBUG!
+			// result = result.trim(); //Get rid of format characters 
+			// if(result.equals("DEADBEEF")) output = output + "1,"; //Append pass
+			// else output = output + "0,"; //Otherwise append fail
+			// ///////// ISOLATION ///////////
+			// output = output + "\"ISO\":"; //Add isolation key
+			// ioSense.digitalWrite(pinsSense::MUX_EN, HIGH); //Disable loopback
+			// // localTime = millis();
+			// // while(Serial1.available() > 0 && (millis() - localTime) < 100) Serial1.read(); //Clear buffer with timeout
+			// for(int i = 0; i < 128; i++) Serial1.read(); //Clear buffer
+			// Serial1.println("DEADBEEF");
+			// Serial1.flush(); //Wait to finish transmission
+			// if(Serial1.available() > 0) output = output + "0,"; //Fail if any serial info is read in
+			// else output = output + "1,"; //Append pass if no data read in
+			// // ioAlpha.digitalWrite(pinsAlpha::DIR, LOW); //Default back to input
 			///////// GET PORT ADRs ////////////
 			output = output + "\"ADRs\":["; //Grab address from each port
 			for(int i = 1; i <= numPorts; i++) {
@@ -406,6 +407,7 @@ String SDI12Talon::selfDiagnostic(uint8_t diagnosticLevel, time_t time)
 		else output = output + "\"ALPHA\":null,\"ALPHA_INT\":null,\"MUX\":null,\"I2C_OB\":[null],\"LB\":null,\"ISO\":null,\"ADRs\":[null,null,null,null],"; //Append null filled string 
 		
 	}
+	if((millis() - diagnosticStart) > collectMax) throwError(EXCEED_COLLECT_TIME | 0x200 | talonPortErrorCode | sensorPortErrorCode); //Throw error for diagnostic taking too long
 	return output + "\"Pos\":[" + getTalonPortString() + "]}"; //Write position in logical form - Return compleated closed output
 }
 
@@ -509,12 +511,14 @@ int SDI12Talon::restart()
 
 String SDI12Talon::getData(time_t time)
 {
+	unsigned long dataStart = millis();
 	// String output = "{\"I2C_TALON\":"; //OPEN JSON BLOB
 	String output = "\"Talon-SDI12\":{"; //OPEN JSON BLOB
 	output = output + "\"Apogee\":";
 	if(apogeeDetected == true) output = output + "null"; //If SDI is used, there is no data, report null
 	else output = output + String(apogeeSense.getVoltage(5.0)); //Append voltage result if no SDI-12 detected 
 	output = output + "}"; //Close blob
+	if((millis() - dataStart) > collectMax) throwError(EXCEED_COLLECT_TIME | 0x100 | talonPortErrorCode | sensorPortErrorCode); //Throw error for data taking too long
 	return output; //DEBUG!
 }
 
@@ -690,6 +694,7 @@ void SDI12Talon::setPinDefaults()
 
 String SDI12Talon::getMetadata()
 {
+	unsigned long metadataStart = millis();
 	Wire.beginTransmission(0x58); //Write to UUID range of EEPROM
 	Wire.write(0x98); //Point to start of UUID
 	int error = Wire.endTransmission();
@@ -716,8 +721,9 @@ String SDI12Talon::getMetadata()
 	metadata = metadata + "\"Firmware\":\"v" + FIRMWARE_VERSION + "\","; //Report firmware version as modded BCD
 	metadata = metadata + "\"Pos\":[" + getTalonPortString() + "]"; //Concatonate position 
 	metadata = metadata + "}"; //CLOSE  
+	if((millis() - metadataStart) > collectMax) throwError(EXCEED_COLLECT_TIME | 0x300 | talonPortErrorCode | sensorPortErrorCode); //Throw error for metadata taking too long
 	return metadata; 
-	return ""; //DEBUG!
+	// return ""; //DEBUG!
 }
 
 // uint8_t SDI12Talon::totalErrors()
