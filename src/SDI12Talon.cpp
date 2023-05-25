@@ -85,7 +85,7 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 			faults[i - 1] = true; //Store which ports have faulted 
 			Serial.print("Port Fault: "); //DEBUG!
 			Serial.println(i);
-			//THROW ERROR!
+			throwError(SENSOR_POWER_INIT_FAIL | talonPortErrorCode | i); //Throw concatonated error code
 		}
 		else if(i == 4) { //If testing port 4 (Apogee port) AND fault did not occour while turning it on, check for SDI-12 presence 
 			unsigned long currentTime = millis(); //Grab current time
@@ -1074,6 +1074,7 @@ bool SDI12Talon::testOvercurrent()
 	digitalWrite(KestrelPins::I2C_OB_EN, prevI2C); //Turn on OB I2C bus back off
 	Serial.print("Overcurrent Test: "); //DEBUG!
 	Serial.println(result);
+	if(error != 0) throwError(CSA_READ_FAIL); //Throw error if error in reading from CSA
 	if(result > 3276 || error != 0) return true; //If current is greater than 500mA, or unable to read current, return true
 	else return false; //Otherwise return false 
 }
