@@ -78,14 +78,27 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 
 	for(int i = 1; i <= numPorts; i++) { //Enable power
 		faults[i - 1] = false; //Reset fault state
+		uint16_t zeroCurrent = getBaseCurrent();
+		Serial.print("Base Current: ");
+		Serial.println(zeroCurrent); //DEBUG!
 		enablePower(i, true); //Turn on power for each port
-		delayMicroseconds(2000);
-		if(testOvercurrent()) { //Check if excess current 
+		delayMicroseconds(500); //Make sure ports are switched 
+		uint16_t currentRising = getCurrent();
+		if(currentRising > maxTalonCurrent) {
+			enablePower(i, false); //Turn port back off
+			throwError(TALON_POWER_FAIL_EXCESS | talonPortErrorCode); //Throw error for excess power, do not throw any specific fault this port, yet... - it may not be its fault
+			//DONT FAULT PORT YET
+			faults[i - 1] = true; //Fault for lack of better method FIX! - add intelegent switched system to deal with excess bus current if no single sensor exceeds it 
+			if((currentRising - zeroCurrent) > maxTalonCurrent) throwError(SENSOR_POWER_INIT_FAIL | 0x100 | talonPortErrorCode | i); //Throw concatonated error code - rising fail fail
+		}
+		else if((currentRising - zeroCurrent) > maxPortCurrent) throwError(SENSOR_POWER_WARNING | 0x100 | talonPortErrorCode | i); //Throw warning for exceeding 500mA - does not MEAN this port is a problem
+		delay(10); //Wait for capacitive spike to go away
+		if(testOvercurrent(zeroCurrent)) { //Check if STILL excess current 
 			enablePower(i, false); //Turn port back off
 			faults[i - 1] = true; //Store which ports have faulted 
 			Serial.print("Port Fault: "); //DEBUG!
 			Serial.println(i);
-			throwError(SENSOR_POWER_INIT_FAIL | talonPortErrorCode | i); //Throw concatonated error code
+			throwError(SENSOR_POWER_INIT_FAIL | 0x200 | talonPortErrorCode | i); //Throw concatonated error code - steady state fail
 		}
 		else if(i == 4) { //If testing port 4 (Apogee port) AND fault did not occour while turning it on, check for SDI-12 presence 
 			unsigned long currentTime = millis(); //Grab current time
@@ -101,7 +114,7 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 			}
 		}
 	}
-	delay(500); //Delay to wait for high power draw of O2 sensor to be over 
+	delay(2000); //Delay to wait for high power draw of O2 sensor to be over 
 	// digitalWrite(KestrelPins::PortBPins[talonPort], HIGH); //Connect to internal bus
 	ioAlpha.digitalWrite(pinsAlpha::SENSE_EN, HIGH); //Turn sensing back on
 	// delay(500); //Delay to wait for high power draw of O2 sensor to be over 
@@ -430,6 +443,7 @@ int SDI12Talon::restart()
 {
 	bool hasCriticalError = false;
 	bool hasError = false;
+	Serial.println("SDI-12 Restart Call"); //DEBUG!
 	if(hasReset() && initDone) {
 		Serial.println("RESTART SDI12 TALON - BEGIN"); //DEBUG!
 		begin(0, hasCriticalError, hasError); //If Talon has been power cycled, run begin function again
@@ -438,7 +452,8 @@ int SDI12Talon::restart()
 	// setPinDefaults(); //Reset IO expander pins to their default state
 	bool hasFault = false;
 	for(int i = 0; i < numPorts; i++) {
-		if(ioAlpha.getInterrupt(pinsAlpha::FAULT1 + i) || ioAlpha.digitalRead(pinsAlpha::FAULT1 + i)) { //If previous fault, or current fault
+		// if(ioAlpha.getInterrupt(pinsAlpha::FAULT1 + i) || ioAlpha.digitalRead(pinsAlpha::FAULT1 + i) || ioAlpha.digitalRead(pinsAlpha::EN1 + i)) { //If previous fault, or current fault or if channel is disabled (assume fault)
+		if(ioAlpha.getInterrupt(pinsAlpha::FAULT1 + i) || ioAlpha.digitalRead(pinsAlpha::FAULT1 + i)) { //If previous fault, or current fault	
 			throwError(SENSOR_POWER_FAIL | talonPortErrorCode | i + 1); //Throw error because a power failure has occured  
 			hasFault = true; //Set flag if any return true
 		}
@@ -452,31 +467,45 @@ int SDI12Talon::restart()
 			ioAlpha.digitalWrite(i, LOW);
 		}
 
-		for(int i = 1; i <= numPorts; i++) { //Enable power
-			faults[i - 1] = false; //Reset fault state
-			enablePower(i, true); //Turn on power for each port
-			delayMicroseconds(2000);
-			if(testOvercurrent()) { //Check if excess current 
-				enablePower(i, false); //Turn port back off
-				faults[i - 1] = true; //Store which ports have faulted 
-				Serial.print("Port Fault: "); //DEBUG!
-				Serial.println(i);
-			}
-			else if(i == 4) { //If testing port 4 (Apogee port) AND fault did not occour while turning it on, check for SDI-12 presence 
-				unsigned long currentTime = millis(); //Grab current time
-				float val = 0;
-				Serial.println("Apogee SDI-12 Testing:"); //DEBUG!
-				while((millis() - currentTime) < 100) { //Take continuious measures for up to 100ms
-					val = apogeeSense.getVoltage(5.0); //Get voltage with a 5V refernce value 
-					// Serial.println(val);
-					if(val > 4.5) {
-						apogeeDetected = true; //If pulse is observed, flag SDI-12 as detected
-						break; //Exit while if condition met
-					}
+	for(int i = 1; i <= numPorts; i++) { //Enable power
+		faults[i - 1] = false; //Reset fault state
+		uint16_t zeroCurrent = getBaseCurrent();
+		Serial.print("Base Current: ");
+		Serial.println(zeroCurrent); //DEBUG!
+		enablePower(i, true); //Turn on power for each port
+		delayMicroseconds(500); //Make sure ports are switched 
+		uint16_t currentRising = getCurrent();
+		if(currentRising > maxTalonCurrent) {
+			enablePower(i, false); //Turn port back off
+			throwError(TALON_POWER_FAIL_EXCESS | talonPortErrorCode); //Throw error for excess power, do not throw any specific fault this port, yet... - it may not be its fault
+			//DONT FAULT PORT YET
+			faults[i - 1] = true; //Fault for lack of better method FIX! - add intelegent switched system to deal with excess bus current if no single sensor exceeds it 
+			if((currentRising - zeroCurrent) > maxTalonCurrent) throwError(SENSOR_POWER_INIT_FAIL | 0x100 | talonPortErrorCode | i); //Throw concatonated error code - rising fail fail
+		}
+		else if((currentRising - zeroCurrent) > maxPortCurrent) throwError(SENSOR_POWER_WARNING | 0x100 | talonPortErrorCode | i); //Throw warning for exceeding 500mA - does not MEAN this port is a problem
+		delay(10); //Wait for capacitive spike to go away
+		if(testOvercurrent(zeroCurrent)) { //Check if STILL excess current 
+			enablePower(i, false); //Turn port back off
+			faults[i - 1] = true; //Store which ports have faulted 
+			Serial.print("Port Fault: "); //DEBUG!
+			Serial.println(i);
+			throwError(SENSOR_POWER_INIT_FAIL | 0x200 | talonPortErrorCode | i); //Throw concatonated error code - steady state fail
+		}
+		else if(i == 4) { //If testing port 4 (Apogee port) AND fault did not occour while turning it on, check for SDI-12 presence 
+			unsigned long currentTime = millis(); //Grab current time
+			float val = 0;
+			Serial.println("Apogee SDI-12 Testing:"); //DEBUG!
+			while((millis() - currentTime) < 100) { //Take continuious measures for up to 100ms
+				val = apogeeSense.getVoltage(5.0); //Get voltage with a 5V refernce value 
+				// Serial.println(val);
+				if(val > 4.5) {
+					apogeeDetected = true; //If pulse is observed, flag SDI-12 as detected
+					break; //Exit while if condition met
 				}
 			}
 		}
-		delay(500); //Delay to wait for high power draw of O2 sensor to be over 
+	}
+		delay(2000); //Delay to wait for high power draw of O2 sensor to be over 
 		ioAlpha.digitalWrite(pinsAlpha::SENSE_EN, HIGH); //Turn sensing back on
 
 		for(int i = 1; i <= numPorts; i++) { //Toggle power to all ports to reset faults
@@ -1045,13 +1074,59 @@ bool SDI12Talon::isPresent()
 	// return false; //DEBUG!
 }
 
-bool SDI12Talon::testOvercurrent()
+uint16_t SDI12Talon::getCurrent()
+{
+	bool prevI2C = digitalRead(KestrelPins::I2C_OB_EN);
+	// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect I2C to default external I2C 
+	digitalWrite(KestrelPins::I2C_OB_EN, HIGH); //Turn on OB I2C bus
+	int ADR = 0x14;
+	// Wire.beginTransmission(ADR);
+	// Wire.write(0x00); //Make sure read rate is set to 1024 sps
+	// Wire.write(0x00); 
+	// uint8_t error = Wire.endTransmission();
+
+	Wire.beginTransmission(ADR);
+	Wire.write(0x1F); //Write refresh command
+	Wire.write(0x00); //Initilize a clear
+	uint8_t error = Wire.endTransmission();
+	delay(1);
+	
+
+	Wire.beginTransmission(ADR);
+	Wire.write(0x0E); //Get sense 4 value
+	error = Wire.endTransmission(); //Store Error
+
+	unsigned long localTime = millis();
+	Wire.requestFrom(ADR, 2, true);
+	while(Wire.available() < 2 && (millis() - localTime) < 10); //Wait up to 10 ms 
+	uint8_t byteHigh = Wire.read();  //Read in high and low bytes (big endian)
+	uint8_t byteLow = Wire.read();
+
+	uint16_t result = ((byteHigh << 8) | byteLow); //concatonate result 
+	// digitalWrite(KestrelPins::PortBPins[talonPort], prevState); //Return OB enable to previous state
+	digitalWrite(KestrelPins::I2C_OB_EN, prevI2C); //Turn on OB I2C bus back off
+	// Serial.print("Overcurrent Test: "); //DEBUG!
+	// Serial.println(result);
+	if(error != 0) {
+		throwError(CSA_READ_FAIL | (error << 8)); //Throw error if error in reading from CSA, OR with error code from I2C
+		return maxTalonCurrent + 1; //Return excessive current to induce error
+	}
+	else return result;
+	// if((result) > 13104 || error != 0) return true; //If current is greater than 2A TOTAL, or unable to read current, return true
+	// else return false; //Otherwise return false 
+}
+bool SDI12Talon::testOvercurrent(uint16_t baseCurrent)
 {
 	// bool prevState = digitalRead(KestrelPins::PortBPins[talonPort]); //Check the current state of the OB enable line
 	bool prevI2C = digitalRead(KestrelPins::I2C_OB_EN);
 	// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect I2C to default external I2C 
 	digitalWrite(KestrelPins::I2C_OB_EN, HIGH); //Turn on OB I2C bus
 	int ADR = 0x14;
+	// Wire.beginTransmission(ADR);
+	// Wire.write(0x00); //Make sure read rate is set to 1024 sps
+	// Wire.write(0x00); 
+	// uint8_t error = Wire.endTransmission();
+
 	Wire.beginTransmission(ADR);
 	Wire.write(0x1F); //Write refresh command
 	Wire.write(0x00); //Initilize a clear
@@ -1074,7 +1149,41 @@ bool SDI12Talon::testOvercurrent()
 	digitalWrite(KestrelPins::I2C_OB_EN, prevI2C); //Turn on OB I2C bus back off
 	Serial.print("Overcurrent Test: "); //DEBUG!
 	Serial.println(result);
-	if(error != 0) throwError(CSA_READ_FAIL); //Throw error if error in reading from CSA
-	if(result > 3276 || error != 0) return true; //If current is greater than 500mA, or unable to read current, return true
+	if(error != 0) throwError(CSA_READ_FAIL | (error << 8)); //Throw error if error in reading from CSA, OR with error code from I2C
+	if((result - baseCurrent) > maxPortCurrent || error != 0) return true; //If current is greater than 500mA ADDITIONAL, or unable to read current, return true
 	else return false; //Otherwise return false 
+}
+
+uint16_t SDI12Talon::getBaseCurrent()
+{
+	bool prevI2C = digitalRead(KestrelPins::I2C_OB_EN);
+	// digitalWrite(KestrelPins::PortBPins[talonPort], LOW); //Connect I2C to default external I2C 
+	digitalWrite(KestrelPins::I2C_OB_EN, HIGH); //Turn on OB I2C bus
+	int ADR = 0x14;
+	// Wire.beginTransmission(ADR);
+	// Wire.write(0x00); //Make sure read rate is set to 1024 sps
+	// Wire.write(0x00); 
+	// uint8_t error = Wire.endTransmission();
+
+	Wire.beginTransmission(ADR);
+	Wire.write(0x1F); //Write refresh command
+	Wire.write(0x00); //Initilize a clear
+	uint8_t error = Wire.endTransmission();
+	delay(1);
+	
+
+	Wire.beginTransmission(ADR);
+	Wire.write(0x0E); //Get sense 4 value
+	error = Wire.endTransmission(); //Store Error
+
+	unsigned long localTime = millis();
+	Wire.requestFrom(ADR, 2, true);
+	while(Wire.available() < 2 && (millis() - localTime) < 10); //Wait up to 10 ms 
+	uint8_t byteHigh = Wire.read();  //Read in high and low bytes (big endian)
+	uint8_t byteLow = Wire.read();
+
+	uint16_t result = ((byteHigh << 8) | byteLow); //concatonate result 
+	digitalWrite(KestrelPins::I2C_OB_EN, prevI2C); //Turn on OB I2C bus back off
+	if(error != 0) return 0; //If error in read, use base of 0
+	else return result;
 }

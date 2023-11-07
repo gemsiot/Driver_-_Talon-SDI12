@@ -126,7 +126,7 @@ class SDI12Talon: public Talon
   constexpr static  int DEAFULT_PORT = 3; ///<Use port 3 by default
   constexpr static  int DEFAULT_VERSION = 0x14; ///<Use hardware version v1.4 by default
   constexpr static  int MAX_NUM_ERRORS = 10; ///<Maximum number of errors to log before overwriting previous errors in buffer
-  const String FIRMWARE_VERSION = "1.2.3"; //FIX! Read from system??
+  const String FIRMWARE_VERSION = "1.3.0"; //FIX! Read from system??
   enum pinsSense
   {
     MUX_EN = 3,
@@ -194,13 +194,14 @@ class SDI12Talon: public Talon
     // const uint32_t COUNTER_CLEAR_ERROR = 0xFFE0; //FIX!
     // const uint32_t EEPROM_I2C_ERROR = 0xFFF0; //FIX! (Low 3 bits are returned error)
     const uint32_t SENSE_ADC_INIT_FAIL = 0x10060000; 
-    const uint32_t SENSOR_PORT_RANGE_ERROR = 0x90010100; 
-    const uint32_t SENSOR_POWER_FAIL = 0x20010000; //(low 2 bits are which port)
-    const uint32_t SENSOR_POWER_FAIL_PERSISTENT = 0x20010100; //(low 2 bits are which port)
+    // const uint32_t SENSOR_PORT_RANGE_ERROR = 0x90010100; 
+    // const uint32_t SENSOR_POWER_FAIL = 0x20010000; //(low 2 bits are which port)
+    // const uint32_t SENSOR_POWER_FAIL_PERSISTENT = 0x20010100; //(low 2 bits are which port)
+    // const uint32_t SENSOR_POWER_WARNING = 0xF0170000; //(low 2 bits are which port) (1 = Exceed on rising)
     const uint32_t SDI12_COM_FAIL = 0x60010000; //Comunication failure (1 = Address out of range, 2 = CRC mismatch, 3 = Ack out of range)
     const uint32_t SDI12_SENSOR_MISMATCH = 0xE0030000; //Sensor info mismatch with expected (1 = Address, 2 = report time, 3 = num reports)
     const uint32_t SDI12_READ_FAIL = 0xF0140000; //SDI12 Sensor at port failed to be read
-    const uint32_t TALON_EEPROM_READ_FAIL = 0x10090000; ///<Report failure to read from Talon EEPROM 
+    // const uint32_t TALON_EEPROM_READ_FAIL = 0x10090000; ///<Report failure to read from Talon EEPROM 
     /**
      * @brief Instantiate the Talon, defaults to using pre-specified port and hardware version
      * * @param[in] talonPort: coresponds with the number of the port on the Kestrel logger that the Talon is plugged into
@@ -265,6 +266,8 @@ class SDI12Talon: public Talon
     const uint8_t RX_SDI12 = 10;
     const int MARKING_PERIOD = 9; //>8.33ms for standard marking period
     const unsigned long timeoutStandard = 380; //Standard timeout period for most commands is 380ms 
+    const uint16_t maxTalonCurrent = 13104; //CSA reading for 2A output
+    const uint16_t maxPortCurrent = 3276; //CSA reading for 500mA output
     PCAL9535A ioAlpha; //ADR = 0x25
     MCP3421 adcSense;
     MCP3221 apogeeSense;
@@ -279,7 +282,9 @@ class SDI12Talon: public Talon
 
     bool hasReset(); 
 
-    bool testOvercurrent();
+    bool testOvercurrent(uint16_t baseCurrent);
+    uint16_t getBaseCurrent();
+    uint16_t getCurrent();
 
     void sendBreak();
     void mark(unsigned long period);
