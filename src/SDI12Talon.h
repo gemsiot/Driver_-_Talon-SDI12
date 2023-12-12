@@ -52,6 +52,7 @@ Distributed as-is; no warranty is given.
 #include <Wire.h>
 #include "PCAL9535A.h"
 #include <MCP3421.h>
+#include <MCP3221.h>
 #include <SparkFun_PCA9536_Arduino_Library.h>
 // #include "SparkFun_PCA9536_Arduino_Library/src/SparkFun_PCA9536_Arduino_Library.h"
 #include <Sensor.h>
@@ -127,7 +128,7 @@ class SDI12Talon: public Talon
   constexpr static  int DEAFULT_PORT = 3; ///<Use port 3 by default
   constexpr static  int DEFAULT_VERSION = 0x14; ///<Use hardware version v1.4 by default
   constexpr static  int MAX_NUM_ERRORS = 10; ///<Maximum number of errors to log before overwriting previous errors in buffer
-  const String FIRMWARE_VERSION = "1.0.0"; //FIX! Read from system??
+  const String FIRMWARE_VERSION = "1.3.0"; //FIX! Read from system??
   enum pinsSense
   {
     MUX_EN = 3,
@@ -181,24 +182,28 @@ class SDI12Talon: public Talon
   // const uint32_t POWER_FAULT_PERSISTENT = 0xFF70; //FIX! (low 2 bits are which port)
   // const uint32_t BUS_DISAGREE = 0xFF80; //FIX! (low 2 bits are which port)
   // const uint32_t BUS_OUTOFRANGE = 0xFF90; //FIX! (low 2 bits are which port, 3 = 5V rail)
-  const uint32_t IO_INIT_ERROR = 0xFFA0; //FIX! (Low 3 bits are returned error)
-  // const uint32_t ADC_INIT_ERROR = 0xFFB0; //FIX! (Low 3 bits are returned error)
-  // const uint32_t INPUT_BUF_ERROR = 0xFFC0; //FIX! (Low 2 bits are which port, 3rd bit is Dx vs ODx input)
-  // const uint32_t COUNTER_INCREMENT_ERROR = 0xFFD0; //FIX! (Low 2 bits are which port)
-  // const uint32_t COUNTER_CLEAR_ERROR = 0xFFE0; //FIX!
-  const uint32_t EEPROM_I2C_ERROR = 0xFFF0; //FIX! (Low 3 bits are returned error)
-  const uint32_t SENSE_ADC_INIT_FAIL = 0x10060000; 
-  const uint32_t SENSOR_PORT_RANGE_ERROR = 0x90010100; 
-  const uint32_t SENSOR_POWER_FAIL = 0x20010000; //(low 2 bits are which port)
-  const uint32_t SENSOR_POWER_FAIL_PERSISTENT = 0x20010100; //(low 2 bits are which port)
-  const uint32_t I2C_OB_ISO_FAIL = 0x0F00; //FIX! 
-  const uint32_t I2C_PORT_FAIL = 0x0FE0; //FIX! 
+  
+
   // const float MAX_DISAGREE = 0.1; //If bus is different from expected by more than 10%, throw error
 
   
 
   public:
-
+    const uint32_t IO_INIT_ERROR = 0xFFA0; //FIX! (Low 3 bits are returned error)
+    // const uint32_t ADC_INIT_ERROR = 0xFFB0; //FIX! (Low 3 bits are returned error)
+    // const uint32_t INPUT_BUF_ERROR = 0xFFC0; //FIX! (Low 2 bits are which port, 3rd bit is Dx vs ODx input)
+    // const uint32_t COUNTER_INCREMENT_ERROR = 0xFFD0; //FIX! (Low 2 bits are which port)
+    // const uint32_t COUNTER_CLEAR_ERROR = 0xFFE0; //FIX!
+    // const uint32_t EEPROM_I2C_ERROR = 0xFFF0; //FIX! (Low 3 bits are returned error)
+    const uint32_t SENSE_ADC_INIT_FAIL = 0x10060000; 
+    // const uint32_t SENSOR_PORT_RANGE_ERROR = 0x90010100; 
+    // const uint32_t SENSOR_POWER_FAIL = 0x20010000; //(low 2 bits are which port)
+    // const uint32_t SENSOR_POWER_FAIL_PERSISTENT = 0x20010100; //(low 2 bits are which port)
+    // const uint32_t SENSOR_POWER_WARNING = 0xF0170000; //(low 2 bits are which port) (1 = Exceed on rising)
+    const uint32_t SDI12_COM_FAIL = 0x60010000; //Comunication failure (1 = Address out of range, 2 = CRC mismatch, 3 = Ack out of range)
+    const uint32_t SDI12_SENSOR_MISMATCH = 0xE0030000; //Sensor info mismatch with expected (1 = Address, 2 = report time, 3 = num reports)
+    const uint32_t SDI12_READ_FAIL = 0xF0140000; //SDI12 Sensor at port failed to be read
+    // const uint32_t TALON_EEPROM_READ_FAIL = 0x10090000; ///<Report failure to read from Talon EEPROM 
     /**
      * @brief Instantiate the Talon, defaults to using pre-specified port and hardware version
      * * @param[in] talonPort: coresponds with the number of the port on the Kestrel logger that the Talon is plugged into
@@ -223,7 +228,7 @@ class SDI12Talon: public Talon
     
     // String errorTags[MAX_NUM_ERRORS]
     
-    // String getData(time_t time);
+    String getData(time_t time);
     int restart();
     String selfDiagnostic(uint8_t diagnosticLevel = 4, time_t time = 0); //Default to just level 4 diagnostic, default to time = 0
     // int sleepMode(uint8_t mode) //DEFINE!
@@ -249,8 +254,13 @@ class SDI12Talon: public Talon
       return numPorts;
     }
     // const uint8_t sensorInterface = BusType::I2C;
+    int getAddress();
+    int startMeasurment(int Address = 0); //Default to 0
+    int startMeasurmentCRC(int Address = 0); //Default to 0
     String sendCommand(String command);
     String command(String commandStr, int address);
+    bool testCRC(String message);
+    const int retryCount = 3; //Number of times system should try to connect to an SDI12 device
 
   private:
     const uint8_t numPorts = 4; 
@@ -258,8 +268,11 @@ class SDI12Talon: public Talon
     const uint8_t RX_SDI12 = 10;
     const int MARKING_PERIOD = 9; //>8.33ms for standard marking period
     const unsigned long timeoutStandard = 380; //Standard timeout period for most commands is 380ms 
+    const uint16_t maxTalonCurrent = 13104; //CSA reading for 2A output
+    const uint16_t maxPortCurrent = 3276; //CSA reading for 500mA output
     PCAL9535A ioAlpha; //ADR = 0x25
     MCP3421 adcSense;
+    MCP3221 apogeeSense;
     PCA9536 ioSense;
     uint8_t expectedI2CVals[7] = {0x00, 0x25, 0x30, 0x41, 0x50, 0x58, 0x6B};
     
@@ -267,11 +280,13 @@ class SDI12Talon: public Talon
     const float currentDiv = 0.243902439; ///<82mOhm, 50V/V Amp
     // int throwError(uint32_t error);
     void setPinDefaults();
-
+    int getEnabledPort(); ///<Detects which port is enabled and returns value (1-4). Returns 0 if more than one enabled 
 
     bool hasReset(); 
 
-    bool testOvercurrent();
+    bool testOvercurrent(uint16_t baseCurrent);
+    uint16_t getBaseCurrent();
+    uint16_t getCurrent();
 
     void sendBreak();
     void mark(unsigned long period);
@@ -285,16 +300,18 @@ class SDI12Talon: public Talon
 
 
     // static time_t readTime = 0;
-    bool initDone = false; //Used to keep track if the initaliztion has run - used by hasReset() 
-    
+    // bool initDone = false; //Used to keep track if the initaliztion has run - used by hasReset() 
+    bool apogeeDetected = false; //Keep track if an SDI-12 device has been detected on the apogee port, default to false to use analog
     bool faults[4] = {false, false, false, false}; //Used to store if any of the ports have had a power fault
+    bool portEnabled[4] = {true, true, true, true}; //Assume all are enabled by default
     // uint32_t errors[MAX_NUM_ERRORS] = {0};
     // uint8_t numErrors = 0; //Used to track the index of errors array
     // bool errorOverwrite = false; //Used to track if errors have been overwritten in time since last report
     // bool timeBaseGood = false; //Used to keep track of the valitity of the current timebase
     // uint8_t talonPort = 255; //Used to keep track of which port the Talon is connected to on Kestrel
-    uint32_t portErrorCode = 0; //Used to easily OR with error codes to add the Talon port
+    // uint32_t portErrorCode = 0; //Used to easily OR with error codes to add the Talon port
     uint8_t version = 0; //FIX! This should be read from EEPROM in future 
+    
 };
 
 #endif
