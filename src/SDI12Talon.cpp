@@ -51,7 +51,7 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 
 	// for(int i = 0; i < 3; i++) {
 		if(ioError != 0) { 
-			throwError(IO_INIT_ERROR | ioError | talonPortErrorCode); //Throw error on first init error, not again 
+			throwError(IO_INIT_FAIL | ioError | talonPortErrorCode); //Throw error on first init error, not again 
 			criticalFault = true; //If any IO expander fails, this is a critical error  
 			// break;
 		}

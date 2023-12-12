@@ -128,7 +128,7 @@ class SDI12Talon: public Talon
   constexpr static  int DEAFULT_PORT = 3; ///<Use port 3 by default
   constexpr static  int DEFAULT_VERSION = 0x14; ///<Use hardware version v1.4 by default
   constexpr static  int MAX_NUM_ERRORS = 10; ///<Maximum number of errors to log before overwriting previous errors in buffer
-  const String FIRMWARE_VERSION = "1.3.0"; //FIX! Read from system??
+  const String FIRMWARE_VERSION = "1.3.1"; //FIX! Read from system??
   enum pinsSense
   {
     MUX_EN = 3,
@@ -189,13 +189,13 @@ class SDI12Talon: public Talon
   
 
   public:
-    const uint32_t IO_INIT_ERROR = 0xFFA0; //FIX! (Low 3 bits are returned error)
+    // const uint32_t IO_INIT_ERROR = 0xFFA0; //FIX! (Low 3 bits are returned error)
     // const uint32_t ADC_INIT_ERROR = 0xFFB0; //FIX! (Low 3 bits are returned error)
     // const uint32_t INPUT_BUF_ERROR = 0xFFC0; //FIX! (Low 2 bits are which port, 3rd bit is Dx vs ODx input)
     // const uint32_t COUNTER_INCREMENT_ERROR = 0xFFD0; //FIX! (Low 2 bits are which port)
     // const uint32_t COUNTER_CLEAR_ERROR = 0xFFE0; //FIX!
     // const uint32_t EEPROM_I2C_ERROR = 0xFFF0; //FIX! (Low 3 bits are returned error)
-    const uint32_t SENSE_ADC_INIT_FAIL = 0x10060000; 
+    // const uint32_t SENSE_ADC_INIT_FAIL = 0x10060000; 
     // const uint32_t SENSOR_PORT_RANGE_ERROR = 0x90010100; 
     // const uint32_t SENSOR_POWER_FAIL = 0x20010000; //(low 2 bits are which port)
     // const uint32_t SENSOR_POWER_FAIL_PERSISTENT = 0x20010100; //(low 2 bits are which port)
