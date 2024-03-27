@@ -950,6 +950,36 @@ int SDI12Talon::startMeasurmentCRC(int Address)
 	return (val.substring(1,4)).toInt(); //Return number of seconds to wait
 }
 
+String SDI12Talon::continuousMeasurmentCRC(int Measure, int Address)
+{
+	if(Measure >= 0 && Measure <= 9) {
+		String val = command("RC" + String(Measure), Address);
+		// Serial.print("SDI12 Start Measure CRC: "); //DEBUG!
+		// Serial.print(val);
+		// Serial.print(",");
+		// Serial.println(val.substring(1,3)); //DEBUG!
+
+
+		// for(int i = 0; i < val.length(); i++) {
+		// 	if(((val.charAt(i) < 0x30) || (val.charAt(i) > 0x39)) && (val.charAt(i) != 0x0A) && (val.charAt(i) != 0x0D)) { //If char is non-numeric AND not <CR> or <LF>
+		// 		if(i == 0) throwError(SDI12_COM_FAIL | 0x100 | talonPortErrorCode | getEnabledPort()); //If in the first index, throw address out of range error, append the port which is enabled
+		// 		else throwError(SDI12_COM_FAIL | 0x300 | talonPortErrorCode | getEnabledPort()); //If not the first index, throw ACK out of range error, append the port which is enabled 
+		// 		// Serial.print("CRC Fail: "); //DEBUG!
+		// 		// Serial.println(val.charAt(i), DEC); //Print value of char which failed
+		// 		return ""; //Return empty string and flag CRC failure
+		// 	}
+		// }
+
+		if((val.substring(0, 1)).toInt() != Address) { //If address returned is not the same as the address read, throw error
+			throwError(SDI12_SENSOR_MISMATCH | 0x100 | talonPortErrorCode | sensorPortErrorCode); //Throw error on address change, this is a weird place for this error to happen, but could
+			return ""; //Flag failure to parse
+		}
+
+		return val; //Pass
+	}
+	else return ""; //If measure is out of range
+}
+
 
 String SDI12Talon::command(String Command, int Address) //Correctly place address and line end into string to pass to SendCommand
 {
@@ -1033,7 +1063,10 @@ bool SDI12Talon::testCRC(String message)
 		// Serial.print("SDI12 CRC Test: "); //DEBUG!
 		// Serial.println(crc); //DEBUG!
 		if(crc == msgCRC) return 1; //If CRCs match, return success
-		else return 0; //If CRCs do not match, return a failure 
+		else {
+			throwError(SDI12_COM_FAIL | 0x200 | talonPortErrorCode | getEnabledPort()); //Throw error with CRC fail subtype
+			return 0; //If CRCs do not match, return a failure 
+		}
 	}
 	return 0;
 	

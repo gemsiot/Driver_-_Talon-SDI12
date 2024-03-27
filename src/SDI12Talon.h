@@ -128,7 +128,7 @@ class SDI12Talon: public Talon
   constexpr static  int DEAFULT_PORT = 3; ///<Use port 3 by default
   constexpr static  int DEFAULT_VERSION = 0x14; ///<Use hardware version v1.4 by default
   constexpr static  int MAX_NUM_ERRORS = 10; ///<Maximum number of errors to log before overwriting previous errors in buffer
-  const String FIRMWARE_VERSION = "1.3.1"; //FIX! Read from system??
+  const String FIRMWARE_VERSION = "1.3.2"; //FIX! Read from system??
   enum pinsSense
   {
     MUX_EN = 3,
@@ -257,6 +257,7 @@ class SDI12Talon: public Talon
     int getAddress();
     int startMeasurment(int Address = 0); //Default to 0
     int startMeasurmentCRC(int Address = 0); //Default to 0
+    String continuousMeasurmentCRC(int Measure = 0, int Address = 0); //Default to address 0 and measure 0
     String sendCommand(String command);
     String command(String commandStr, int address);
     bool testCRC(String message);
@@ -267,7 +268,7 @@ class SDI12Talon: public Talon
     const uint8_t TX_SDI12 = 9;
     const uint8_t RX_SDI12 = 10;
     const int MARKING_PERIOD = 9; //>8.33ms for standard marking period
-    const unsigned long timeoutStandard = 380; //Standard timeout period for most commands is 380ms 
+    const unsigned long timeoutStandard = 810; //Standard timeout period for most commands is 380ms, max is 810
     const uint16_t maxTalonCurrent = 13104; //CSA reading for 2A output
     const uint16_t maxPortCurrent = 3276; //CSA reading for 500mA output
     PCAL9535A ioAlpha; //ADR = 0x25
