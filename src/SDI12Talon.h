@@ -128,7 +128,7 @@ class SDI12Talon: public Talon
   constexpr static  int DEAFULT_PORT = 3; ///<Use port 3 by default
   constexpr static  int DEFAULT_VERSION = 0x14; ///<Use hardware version v1.4 by default
   constexpr static  int MAX_NUM_ERRORS = 10; ///<Maximum number of errors to log before overwriting previous errors in buffer
-  const String FIRMWARE_VERSION = "1.3.2"; //FIX! Read from system??
+  const String FIRMWARE_VERSION = "1.3.3"; //FIX! Read from system??
   enum pinsSense
   {
     MUX_EN = 3,
@@ -256,7 +256,7 @@ class SDI12Talon: public Talon
     // const uint8_t sensorInterface = BusType::I2C;
     int getAddress();
     int startMeasurment(int Address = 0); //Default to 0
-    int startMeasurmentCRC(int Address = 0); //Default to 0
+    int startMeasurmentCRC(int Address = 0, int Index = -1); //Default to 0 address and null index
     String continuousMeasurmentCRC(int Measure = 0, int Address = 0); //Default to address 0 and measure 0
     String sendCommand(String command);
     String command(String commandStr, int address);

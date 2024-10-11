@@ -931,9 +931,11 @@ int SDI12Talon::startMeasurment(int Address)
 	return (val.substring(1,4)).toInt(); //Return number of seconds to wait
 }
 
-int SDI12Talon::startMeasurmentCRC(int Address)
+int SDI12Talon::startMeasurmentCRC(int Address, int Index)
 {
-	String val = command("MC", Address);
+	String com = "MC";
+	if(Index >= 0 && Index <= 9) com = com + String(Index); //If Index in range append to com value
+	String val = command(com, Address);
 	Serial.print("SDI12 Start Measure CRC: "); //DEBUG!
 	Serial.print(val);
 	Serial.print(",");
