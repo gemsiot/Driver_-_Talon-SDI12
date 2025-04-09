@@ -48,7 +48,13 @@ Distributed as-is; no warranty is given.
 
 #include <stdio.h>
 // #include "Arduino.h"
+#ifdef TESTING
+// Use mock implementation for tests
+#include "MockParticle.h"
+#else
+// Use real Particle implementation
 #include <Particle.h>
+#endif
 #include <Wire.h>
 #include "PCAL9535A.h"
 #include <MCP3421.h>
