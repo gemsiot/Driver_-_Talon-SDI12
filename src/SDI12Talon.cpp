@@ -931,6 +931,20 @@ int SDI12Talon::startMeasurment(int Address)
 	return (val.substring(1,4)).toInt(); //Return number of seconds to wait
 }
 
+int SDI12Talon::startMeasurmentIndex(int index, int Address)
+{
+	String indexString = String(index);
+	String val = command("M" + indexString, Address);
+	for(int i = 0; i < val.length(); i++) {
+		if(val.charAt(i) < 0x30 || val.charAt(i) > 0x39 && val.charAt(i) != 0x0A && val.charAt(i) != 0x0D) { //If char is non-numeric AND not <CR> or <LF>) {
+			if(i == 0) throwError(SDI12_COM_FAIL | 0x100 | talonPortErrorCode | getEnabledPort()); //If in the first index, throw address out of range error
+			else throwError(SDI12_COM_FAIL | 0x300 | talonPortErrorCode | getEnabledPort()); //If not the first index, throw ACK out of range error
+			return -1;
+		}
+	}
+	return (val.substring(1,4)).toInt(); //Return number of seconds to wait
+}
+
 int SDI12Talon::startMeasurmentCRC(int Address, int Index)
 {
 	String com = "MC";

@@ -262,6 +262,7 @@ class SDI12Talon: public Talon
     // const uint8_t sensorInterface = BusType::I2C;
     int getAddress();
     int startMeasurment(int Address = 0); //Default to 0
+    int startMeasurmentIndex(int index, int Address = 0);
     int startMeasurmentCRC(int Address = 0, int Index = -1); //Default to 0 address and null index
     String continuousMeasurmentCRC(int Measure = 0, int Address = 0); //Default to address 0 and measure 0
     String sendCommand(String command);
