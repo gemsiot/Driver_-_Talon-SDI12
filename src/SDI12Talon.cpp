@@ -108,7 +108,7 @@ String SDI12Talon::begin(time_t time, bool &criticalFault, bool &fault)
 			Serial.println("Apogee SDI-12 Testing:"); //DEBUG!
 			while((millis() - currentTime) < 100) { //Take continuious measures for up to 100ms
 				val = apogeeSense.getVoltage(5.0); //Get voltage with a 5V refernce value 
-				// Serial.println(val);
+				Serial.println(val);
 				if(val > 4.5) {
 					apogeeDetected = true; //If pulse is observed, flag SDI-12 as detected
 					break; //Exit while if condition met
@@ -499,7 +499,7 @@ int SDI12Talon::restart()
 			Serial.println("Apogee SDI-12 Testing:"); //DEBUG!
 			while((millis() - currentTime) < 100) { //Take continuious measures for up to 100ms
 				val = apogeeSense.getVoltage(5.0); //Get voltage with a 5V refernce value 
-				// Serial.println(val);
+				Serial.println(val);
 				if(val > 4.5) {
 					apogeeDetected = true; //If pulse is observed, flag SDI-12 as detected
 					break; //Exit while if condition met

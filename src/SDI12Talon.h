@@ -269,6 +269,18 @@ class SDI12Talon: public Talon
     String command(String commandStr, int address);
     bool testCRC(String message);
     const int retryCount = 3; //Number of times system should try to connect to an SDI12 device
+    
+    // Public getters for analog Apogee sensor support
+    bool isApogeeDetected() const { return apogeeDetected; }
+    float getApogeeVoltage(float referenceVoltage = 5.0) { 
+        // Ensure port 4 is configured for analog input (disable data line)
+        if (!apogeeDetected) {
+            // Force disable data line for analog reading - bypass the normal enableData logic
+            ioAlpha.digitalWrite(pinsAlpha::DATA_EN4, LOW);
+            delay(10); // Wait for voltage to settle
+        }
+        return apogeeSense.getVoltage(referenceVoltage); 
+    }
 
   private:
     const uint8_t numPorts = 4; 
